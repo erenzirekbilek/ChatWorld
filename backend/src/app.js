@@ -1,29 +1,39 @@
-const fastifyLib = require('fastify');
+const fastify = require('fastify')({
+  logger: {
+    transport: { target: 'pino-pretty' }
+  }
+});
+
 const SocketIO = require('fastify-socket.io');
 const JWTPlugin = require('@fastify/jwt');
+const cors = require('@fastify/cors');
 
-// Fastify v5 için en temiz logger yapılandırması
-const app = fastifyLib({ 
-  logger: {
-    transport: {
-      target: 'pino-pretty'
-    }
-  }
+// Plugins
+fastify.register(cors, { origin: '*' });
+fastify.register(JWTPlugin, {
+  secret: process.env.JWT_SECRET || 'test-secret'
+});
+fastify.register(SocketIO, {
+  cors: { origin: '*' }
 });
 
-app.register(JWTPlugin, { secret: process.env.JWT_SECRET || 'super-secret' });
-app.register(SocketIO, { cors: { origin: '*' } });
-
-// JWT doğrulama fonksiyonunu Fastify'a tanıtıyoruz
-app.decorate("authenticate", async (request, reply) => {
+// Auth decorator
+fastify.decorate('authenticate', async (req, reply) => {
   try {
-    await request.jwtVerify(); // Token geçerli mi diye bakar
+    await req.jwtVerify();
   } catch (err) {
-    reply.send(err); // Geçersizse hata fırlatır
+    reply.status(401).send({ error: 'Unauthorized' });
   }
 });
-// Routes
-app.register(require('./routes/auth'));
-app.register(require('./routes/rooms'));
 
-module.exports = app;
+// Routes
+fastify.register(require('./routes/auth'));
+fastify.register(require('./routes/letters'));
+fastify.register(require('./routes/friendships'));
+
+// Health check
+fastify.get('/health', async (req, reply) => {
+  return { status: 'ok' };
+});
+
+module.exports = fastify;

@@ -25,15 +25,17 @@ export default function RoomListScreen() {
   const router = useRouter();
 
   useEffect(() => {
-    fetchRooms();
-  }, []);
+    if (token) fetchRooms();
+  }, [token]);
 
   const fetchRooms = async () => {
     try {
-      const data = await roomAPI.getRooms();
-      setRooms(data);
-    } catch {
-      Alert.alert("Error", "Failed to fetch rooms");
+      if (!token) return;
+      const data = await roomAPI.getRooms(token); // artık doğru
+      if (Array.isArray(data)) setRooms(data);
+    } catch (error) {
+      console.error("Fetch hatası:", error);
+      Alert.alert("Hata", "Odalar yüklenirken bir sorun oluştu.");
     }
   };
 
@@ -45,12 +47,15 @@ export default function RoomListScreen() {
 
   const createRoom = async () => {
     if (!newRoomName.trim()) {
-      Alert.alert("Error", "Room name required");
+      Alert.alert("Hata", "Oda adı gerekli");
       return;
     }
 
     try {
-      if (!token) return;
+      if (!token) {
+        Alert.alert("Hata", "Oturum bilgisi bulunamadı.");
+        return;
+      }
 
       const result = await roomAPI.createRoom(newRoomName, token);
 
@@ -58,35 +63,24 @@ export default function RoomListScreen() {
         setNewRoomName("");
         setShowCreateInput(false);
         await fetchRooms();
-        Alert.alert("Success", "Room created!");
+        Alert.alert("Başarılı", "Oda oluşturuldu!");
+      } else {
+        Alert.alert("Hata", result.error || "Oda oluşturulamadı.");
       }
-    } catch {
-      Alert.alert("Error", "Failed to create room");
+    } catch (error) {
+      Alert.alert("Hata", "Oda oluşturulurken bir hata oluştu.");
     }
   };
 
-  const joinRoom = async (roomId: string) => {
-    try {
-      if (!token) return;
-
-      const result = await roomAPI.joinRoom(roomId, token);
-
-      if (result.success) {
-        router.push({
-          pathname: "/(main)/ChatScreen",
-          params: { roomId },
-        });
-      }
-    } catch {
-      Alert.alert("Error", "Failed to join room");
-    }
+  const joinRoom = (roomId: string | number) => {
+    router.push(`/(main)/ChatScreen?roomId=${roomId}`);
   };
 
   const handleLogout = () => {
-    Alert.alert("Logout", "Are you sure?", [
-      { text: "Cancel", style: "cancel" },
+    Alert.alert("Çıkış", "Çıkış yapmak istediğinize emin misiniz?", [
+      { text: "İptal", style: "cancel" },
       {
-        text: "Logout",
+        text: "Çıkış Yap",
         style: "destructive",
         onPress: async () => {
           await logout();
@@ -101,11 +95,13 @@ export default function RoomListScreen() {
       <View style={styles.header}>
         <View>
           <Text style={styles.headerTitle}>ChatWorld</Text>
-          <Text style={styles.headerSubtitle}>@{user?.username}</Text>
+          <Text style={styles.headerSubtitle}>
+            Hoş geldin, {user?.username || "Kullanıcı"}
+          </Text>
         </View>
 
         <TouchableOpacity onPress={handleLogout}>
-          <Ionicons name="log-out" size={24} color="#ff6b6b" />
+          <Ionicons name="log-out-outline" size={28} color="#ff6b6b" />
         </TouchableOpacity>
       </View>
 
@@ -113,25 +109,29 @@ export default function RoomListScreen() {
         <View style={styles.createRoomContainer}>
           <TextInput
             style={styles.createRoomInput}
-            placeholder="Room name..."
+            placeholder="Oda adı yazın..."
             placeholderTextColor="#888"
             value={newRoomName}
             onChangeText={setNewRoomName}
+            autoFocus
           />
 
-          <TouchableOpacity onPress={createRoom}>
-            <Ionicons name="checkmark" size={24} color="#4f46e5" />
+          <TouchableOpacity onPress={createRoom} style={styles.actionButton}>
+            <Ionicons name="checkmark-circle" size={32} color="#4ade80" />
           </TouchableOpacity>
 
-          <TouchableOpacity onPress={() => setShowCreateInput(false)}>
-            <Ionicons name="close" size={24} color="#999" />
+          <TouchableOpacity
+            onPress={() => setShowCreateInput(false)}
+            style={styles.actionButton}
+          >
+            <Ionicons name="close-circle" size={32} color="#f87171" />
           </TouchableOpacity>
         </View>
       )}
 
       <FlatList
         data={rooms}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item) => item.id.toString()}
         renderItem={({ item }) => (
           <TouchableOpacity
             style={styles.roomItem}
@@ -139,25 +139,23 @@ export default function RoomListScreen() {
           >
             <View style={styles.roomInfo}>
               <Text style={styles.roomName}>{item.name}</Text>
-              <Text style={styles.roomBy}>by {item.created_by_username}</Text>
+              <Text style={styles.roomBy}>
+                Oluşturan: {item.createdBy || "Sistem"}
+              </Text>
             </View>
 
-            <Ionicons name="chevron-forward" size={24} color="#4f46e5" />
+            <Ionicons name="chevron-forward" size={20} color="#4f46e5" />
           </TouchableOpacity>
         )}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor="#4f46e5"
+          />
         }
         ListEmptyComponent={
-          <Text
-            style={{
-              textAlign: "center",
-              marginTop: 40,
-              color: "#888",
-            }}
-          >
-            No rooms found.
-          </Text>
+          <Text style={styles.emptyText}>Henüz oda bulunmuyor.</Text>
         }
       />
 
@@ -165,98 +163,85 @@ export default function RoomListScreen() {
         style={styles.fab}
         onPress={() => setShowCreateInput(!showCreateInput)}
       >
-        <Ionicons name="add" size={32} color="#fff" />
+        <Ionicons name="add" size={35} color="#fff" />
       </TouchableOpacity>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#0f0f1e",
-  },
-
+  container: { flex: 1, backgroundColor: "#0f0f1e" },
   header: {
     backgroundColor: "#16213e",
-    paddingHorizontal: 15,
-    paddingVertical: 12,
+    paddingHorizontal: 20,
+    paddingTop: 50,
+    paddingBottom: 20,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginTop: 20,
   },
-
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#fff",
-  },
-
-  headerSubtitle: {
-    fontSize: 12,
-    color: "#888",
-    marginTop: 4,
-  },
-
+  headerTitle: { fontSize: 28, fontWeight: "bold", color: "#fff" },
+  headerSubtitle: { fontSize: 14, color: "#888", marginTop: 4 },
   createRoomContainer: {
     flexDirection: "row",
-    padding: 12,
+    padding: 15,
     backgroundColor: "#16213e",
-    borderBottomWidth: 1,
+    borderBottomWidth: 2,
     borderBottomColor: "#4f46e5",
-    gap: 8,
+    alignItems: "center",
+    gap: 10,
   },
-
   createRoomInput: {
     flex: 1,
     backgroundColor: "#1a1a2e",
     color: "#fff",
-    padding: 10,
-    borderRadius: 6,
+    padding: 12,
+    borderRadius: 8,
     borderWidth: 1,
-    borderColor: "#4f46e5",
+    borderColor: "#334155",
+    fontSize: 16,
   },
-
+  actionButton: { justifyContent: "center", alignItems: "center" },
   roomItem: {
     backgroundColor: "#1a1a2e",
-    padding: 15,
-    marginHorizontal: 10,
-    marginVertical: 6,
-    borderRadius: 8,
+    padding: 18,
+    marginHorizontal: 15,
+    marginVertical: 8,
+    borderRadius: 12,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#374151",
+    borderColor: "#1e293b",
+    elevation: 3,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
   },
-
-  roomInfo: {
-    flex: 1,
-  },
-
-  roomName: {
-    color: "#fff",
+  roomInfo: { flex: 1 },
+  roomName: { color: "#fff", fontSize: 18, fontWeight: "600" },
+  roomBy: { color: "#94a3b8", fontSize: 13, marginTop: 6 },
+  emptyText: {
+    textAlign: "center",
+    marginTop: 50,
+    color: "#64748b",
     fontSize: 16,
-    fontWeight: "600",
   },
-
-  roomBy: {
-    color: "#888",
-    fontSize: 12,
-    marginTop: 4,
-  },
-
   fab: {
     position: "absolute",
-    margin: 16,
-    right: 0,
-    bottom: 0,
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    right: 20,
+    bottom: 30,
+    width: 65,
+    height: 65,
+    borderRadius: 32.5,
     backgroundColor: "#4f46e5",
     justifyContent: "center",
     alignItems: "center",
+    elevation: 8,
+    shadowColor: "#4f46e5",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
   },
 });

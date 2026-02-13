@@ -1,5 +1,5 @@
-export const API_BASE_URL = "http://YOUR_API_URL:3000";
-// Düzenle: http://192.168.1.100:3000 (local) veya https://chatworld-backend.onrender.com (production)
+export const API_BASE_URL = "http://192.168.1.103:3000";
+// Düzenle: bilgisayar LAN IP’n ile. Expo Go cihazı aynı ağda olmalı.
 
 export const authAPI = {
   register: async (username: string, email: string, password: string) => {
@@ -22,8 +22,14 @@ export const authAPI = {
 };
 
 export const roomAPI = {
-  getRooms: async () => {
-    const res = await fetch(`${API_BASE_URL}/rooms`);
+  // Token parametresi eklendi
+  getRooms: async (token: string) => {
+    const res = await fetch(`${API_BASE_URL}/rooms`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    if (!res.ok) throw new Error("Odalar alınamadı");
     return res.json();
   },
 
@@ -36,7 +42,11 @@ export const roomAPI = {
       },
       body: JSON.stringify({ name }),
     });
-    return res.json();
+    if (!res.ok) {
+      const error = await res.json();
+      return { success: false, error: error.message || "Oda oluşturulamadı" };
+    }
+    return { success: true };
   },
 
   joinRoom: async (roomId: string, token: string) => {
@@ -49,8 +59,10 @@ export const roomAPI = {
     return res.json();
   },
 
-  getMessages: async (roomId: string) => {
-    const res = await fetch(`${API_BASE_URL}/messages/${roomId}`);
+  getMessages: async (roomId: string, token?: string) => {
+    const headers: Record<string, string> = {};
+    if (token) headers.Authorization = `Bearer ${token}`;
+    const res = await fetch(`${API_BASE_URL}/messages/${roomId}`, { headers });
     return res.json();
   },
 };

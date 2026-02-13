@@ -20,19 +20,28 @@ export default function LoginScreen() {
   const router = useRouter();
 
   const handleLogin = async () => {
+    // 1. Boş alan kontrolü
     if (!email.trim() || !password.trim()) {
-      Alert.alert("Error", "Email and password required");
+      Alert.alert("Hata", "Email ve şifre zorunludur.");
       return;
     }
 
     setLoading(true);
+
+    // 2. AuthContext üzerinden giriş işlemi
     const result = await login(email, password);
     setLoading(false);
 
+    // 3. Yanıt kontrolü ve Yönlendirme
     if (!result.success) {
-      Alert.alert("Login Failed", result.error);
+      Alert.alert(
+        "Giriş Başarısız",
+        result.error || "Bilgilerinizi kontrol edin.",
+      );
     } else {
-      router.replace("/(main)/RoomListScreen");
+      // BAŞARILI: Kullanıcıyı Keşfet ekranına gönderiyoruz
+      console.log("Giriş başarılı, DiscoverScreen'e yönlendiriliyor...");
+      router.replace("/(main)/Home");
     }
   };
 
@@ -43,7 +52,7 @@ export default function LoginScreen() {
     >
       <View style={styles.content}>
         <Text style={styles.title}>ChatWorld</Text>
-        <Text style={styles.subtitle}>Real-time Chat App</Text>
+        <Text style={styles.subtitle}>Mektup Arkadaşını Keşfet</Text>
 
         <TextInput
           style={styles.input}
@@ -53,11 +62,12 @@ export default function LoginScreen() {
           onChangeText={setEmail}
           editable={!loading}
           keyboardType="email-address"
+          autoCapitalize="none"
         />
 
         <TextInput
           style={styles.input}
-          placeholder="Password"
+          placeholder="Şifre"
           placeholderTextColor="#888"
           value={password}
           onChangeText={setPassword}
@@ -71,14 +81,16 @@ export default function LoginScreen() {
           disabled={loading}
         >
           <Text style={styles.buttonText}>
-            {loading ? "Logging in..." : "LOGIN"}
+            {loading ? "Giriş yapılıyor..." : "GİRİŞ YAP"}
           </Text>
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => router.push("/(auth)/RegisterScreen")}>
+        <TouchableOpacity
+          onPress={() => router.push("/(auth)/RegisterScreen")}
+          disabled={loading}
+        >
           <Text style={styles.link}>
-            {"Don't have account?"}
-            <Text style={styles.linkBold}>Register</Text>
+            Hesabın yok mu? <Text style={styles.linkBold}>Kayıt Ol</Text>
           </Text>
         </TouchableOpacity>
       </View>
@@ -137,6 +149,7 @@ const styles = StyleSheet.create({
     color: "#9ca3af",
     textAlign: "center",
     fontSize: 14,
+    marginTop: 10,
   },
   linkBold: {
     color: "#4f46e5",

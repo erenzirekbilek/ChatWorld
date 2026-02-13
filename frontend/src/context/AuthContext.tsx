@@ -1,17 +1,25 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { jwtDecode } from "jwt-decode";
 import React, { createContext, useContext, useEffect, useState } from "react";
+import { authAPI } from "../utils/api";
 
+// Tipler
 export interface User {
   id: string;
   username: string;
   email: string;
+  gender?: string;
+  country?: string;
+  city?: string;
 }
 
 interface DecodedToken {
   id: string;
   username: string;
   email: string;
+  gender?: string;
+  country?: string;
+  city?: string;
   exp: number;
 }
 
@@ -28,6 +36,9 @@ export interface AuthContextType {
     username: string,
     email: string,
     password: string,
+    gender: string,
+    country: string,
+    city: string,
   ) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
 }
@@ -36,12 +47,12 @@ export const AuthContext = createContext<AuthContextType | undefined>(
   undefined,
 );
 
-const API_URL = "http://YOUR_API_URL:3000";
-
-export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -51,25 +62,26 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const bootstrapAsync = async () => {
     try {
       const savedToken = await AsyncStorage.getItem("userToken");
-
       if (savedToken) {
         const decoded = jwtDecode<DecodedToken>(savedToken);
 
+        // Token süresi kontrol
         if (decoded.exp * 1000 < Date.now()) {
-          await AsyncStorage.removeItem("userToken");
-          setToken(null);
-          setUser(null);
+          await logout();
         } else {
           setToken(savedToken);
           setUser({
             id: decoded.id,
             username: decoded.username,
             email: decoded.email,
+            gender: decoded.gender,
+            country: decoded.country,
+            city: decoded.city,
           });
         }
       }
     } catch (err) {
-      console.error("Bootstrap error:", err);
+      console.error("Auth Bootstrap Error:", err);
     } finally {
       setLoading(false);
     }
@@ -78,23 +90,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const login = async (email: string, password: string) => {
     try {
       setError(null);
+      const data = await authAPI.login(email, password);
 
-      const response = await fetch(`${API_URL}/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok || !data.success) {
-        throw new Error(data.error || "Login failed");
-      }
+      if (!data.success) throw new Error(data.error || "Login failed");
 
       await AsyncStorage.setItem("userToken", data.token);
 
+      const decoded = jwtDecode<DecodedToken>(data.token);
+      const userData: User = {
+        id: decoded.id,
+        username: decoded.username,
+        email: decoded.email,
+        gender: decoded.gender,
+        country: decoded.country,
+        city: decoded.city,
+      };
+
       setToken(data.token);
-      setUser(data.user);
+      setUser(userData);
 
       return { success: true };
     } catch (err) {
@@ -108,26 +121,37 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     username: string,
     email: string,
     password: string,
+    gender: string,
+    country: string,
+    city: string,
   ) => {
     try {
       setError(null);
+      const data = await authAPI.register(
+        username,
+        email,
+        password,
+        gender,
+        country,
+        city,
+      );
 
-      const response = await fetch(`${API_URL}/register`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, email, password }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok || !data.success) {
-        throw new Error(data.error || "Registration failed");
-      }
+      if (!data.success) throw new Error(data.error || "Registration failed");
 
       await AsyncStorage.setItem("userToken", data.token);
 
+      const decoded = jwtDecode<DecodedToken>(data.token);
+      const userData: User = {
+        id: decoded.id,
+        username: decoded.username,
+        email: decoded.email,
+        gender: decoded.gender,
+        country: decoded.country,
+        city: decoded.city,
+      };
+
       setToken(data.token);
-      setUser(data.user);
+      setUser(userData);
 
       return { success: true };
     } catch (err) {
@@ -139,14 +163,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const logout = async () => {
-    try {
-      await AsyncStorage.removeItem("userToken");
-      setToken(null);
-      setUser(null);
-      setError(null);
-    } catch (err) {
-      console.error("Logout error:", err);
-    }
+    await AsyncStorage.removeItem("userToken");
+    setToken(null);
+    setUser(null);
+    setError(null);
   };
 
   return (
@@ -160,10 +180,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
 export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
-
   if (!context) {
     throw new Error("useAuth must be used within AuthProvider");
   }
-
   return context;
 };

@@ -1,21 +1,24 @@
-const app = require('./app');
+const app = require('./app'); // app.js'den gelen fastify instance'ı
 const { initDB } = require('./db');
-const socketHandler = require('./services/socket');
+
 const start = async () => {
   try {
-    // Önce veritabanını ve tabloları hazırla
-    await initDB(); 
-    await app.register(socketHandler);
-    // Veritabanı başarıyla bağlandıysa sunucuyu başlat
-    // Not: Eğer Express kullanıyorsan app.listen(3000, ...) şeklinde yazmalısın.
-    // Eğer Fastify kullanıyorsan aşağıdaki format doğrudur:
-    await app.listen({ port: 3000, host: '0.0.0.0' });
-    
-    console.log('🚀 Server running on http://localhost:3000');
+    // 1. Veritabanını hazırla
+    await initDB();
+    console.log('✅ DB initialized and tables created.');
+
+    // 2. Sunucuyu başlat
+    // 'app' artık bir fastify instance'ı olduğu için .listen hata vermez.
+    await app.listen({ 
+      port: 3000, 
+      host: '0.0.0.0' 
+    });
+
+    console.log('🚀 Server running on http://192.168.1.103:3000');
   } catch (err) {
     console.error('❌ Uygulama başlatılamadı:', err);
-    process.exit(1); // Kritik hata durumunda süreci durdur
+    process.exit(1);
   }
 };
 
-start().catch(console.error);
+start();
