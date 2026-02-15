@@ -1,6 +1,25 @@
 // src/routes/friendships.js
 const { pool } = require('../db');
 const { v4: uuid } = require('uuid');
+const {
+  ValidationError,
+  AuthorizationError,
+  NotFoundError,
+  InternalError
+} = require('../utils/errors');
+
+// UUID validation regex
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// Helper function to validate UUID
+const validateUUID = (value, fieldName = 'ID') => {
+  if (!value || !UUID_REGEX.test(value)) {
+    throw new ValidationError(
+      `Invalid ${fieldName} format`,
+      `INVALID_${fieldName.toUpperCase()}_FORMAT`
+    );
+  }
+};
 
 module.exports = async (fastify) => {
   // ===================================
@@ -13,23 +32,19 @@ module.exports = async (fastify) => {
 
     // Validation
     if (!userId2) {
-      return reply.status(400).send({ 
-        error: 'userId2 is required' 
-      });
+      throw new ValidationError(
+        'userId2 is required',
+        'MISSING_USER_ID'
+      );
     }
+
+    validateUUID(userId2, 'userId');
 
     if (userId1 === userId2) {
-      return reply.status(400).send({ 
-        error: 'Cannot send friend request to yourself' 
-      });
-    }
-
-    // UUID validation
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (!uuidRegex.test(userId2)) {
-      return reply.status(400).send({ 
-        error: 'Invalid userId format' 
-      });
+      throw new ValidationError(
+        'Cannot send friend request to yourself',
+        'SELF_REQUEST'
+      );
     }
 
     try {
@@ -40,9 +55,7 @@ module.exports = async (fastify) => {
       );
 
       if (userCheck.rows.length === 0) {
-        return reply.status(404).send({ 
-          error: 'User not found' 
-        });
+        throw new NotFoundError('User');
       }
 
       // Order IDs to prevent duplicates (smaller ID first)
@@ -65,10 +78,10 @@ module.exports = async (fastify) => {
         friendship: result.rows[0]
       });
     } catch (err) {
-      console.error('Send friend request error:', err.message);
-      return reply.status(500).send({ 
-        error: 'Failed to send friend request' 
-      });
+      if (err instanceof ValidationError || err instanceof NotFoundError) {
+        throw err;
+      }
+      throw new InternalError('Failed to send friend request');
     }
   });
 
@@ -80,13 +93,7 @@ module.exports = async (fastify) => {
     const { id } = req.params;
     const userId = req.user.id;
 
-    // UUID validation
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (!uuidRegex.test(id)) {
-      return reply.status(400).send({ 
-        error: 'Invalid friendship ID format' 
-      });
-    }
+    validateUUID(id, 'friendshipId');
 
     try {
       // Check friendship exists and user is part of it
@@ -96,25 +103,25 @@ module.exports = async (fastify) => {
       );
 
       if (friendCheck.rows.length === 0) {
-        return reply.status(404).send({ 
-          error: 'Friendship request not found' 
-        });
+        throw new NotFoundError('Friendship');
       }
 
       const { user_id_1, user_id_2, status } = friendCheck.rows[0];
 
       // Check if user is part of this friendship
       if (userId !== user_id_1 && userId !== user_id_2) {
-        return reply.status(403).send({ 
-          error: 'Cannot accept this friend request' 
-        });
+        throw new AuthorizationError(
+          'Cannot accept this friend request',
+          'ACCESS_DENIED'
+        );
       }
 
       // Can only accept pending requests
       if (status !== 'pending') {
-        return reply.status(400).send({ 
-          error: `Cannot accept request with status: ${status}` 
-        });
+        throw new ValidationError(
+          `Cannot accept request with status: ${status}`,
+          'INVALID_STATUS'
+        );
       }
 
       // Update status
@@ -132,10 +139,10 @@ module.exports = async (fastify) => {
         friendship: result.rows[0]
       });
     } catch (err) {
-      console.error('Accept friendship error:', err.message);
-      return reply.status(500).send({ 
-        error: 'Failed to accept friend request' 
-      });
+      if (err instanceof ValidationError || err instanceof AuthorizationError || err instanceof NotFoundError) {
+        throw err;
+      }
+      throw new InternalError('Failed to accept friend request');
     }
   });
 
@@ -147,12 +154,7 @@ module.exports = async (fastify) => {
     const { id } = req.params;
     const userId = req.user.id;
 
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (!uuidRegex.test(id)) {
-      return reply.status(400).send({ 
-        error: 'Invalid friendship ID format' 
-      });
-    }
+    validateUUID(id, 'friendshipId');
 
     try {
       const friendCheck = await pool.query(
@@ -161,23 +163,23 @@ module.exports = async (fastify) => {
       );
 
       if (friendCheck.rows.length === 0) {
-        return reply.status(404).send({ 
-          error: 'Friendship request not found' 
-        });
+        throw new NotFoundError('Friendship');
       }
 
       const { user_id_1, user_id_2, status } = friendCheck.rows[0];
 
       if (userId !== user_id_1 && userId !== user_id_2) {
-        return reply.status(403).send({ 
-          error: 'Cannot reject this friend request' 
-        });
+        throw new AuthorizationError(
+          'Cannot reject this friend request',
+          'ACCESS_DENIED'
+        );
       }
 
       if (status !== 'pending') {
-        return reply.status(400).send({ 
-          error: `Cannot reject request with status: ${status}` 
-        });
+        throw new ValidationError(
+          `Cannot reject request with status: ${status}`,
+          'INVALID_STATUS'
+        );
       }
 
       // Delete the friendship request
@@ -188,10 +190,10 @@ module.exports = async (fastify) => {
         message: 'Friend request rejected'
       });
     } catch (err) {
-      console.error('Reject friendship error:', err.message);
-      return reply.status(500).send({ 
-        error: 'Failed to reject friend request' 
-      });
+      if (err instanceof ValidationError || err instanceof AuthorizationError || err instanceof NotFoundError) {
+        throw err;
+      }
+      throw new InternalError('Failed to reject friend request');
     }
   });
 
@@ -203,12 +205,7 @@ module.exports = async (fastify) => {
     const { id } = req.params;
     const userId = req.user.id;
 
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (!uuidRegex.test(id)) {
-      return reply.status(400).send({ 
-        error: 'Invalid friendship ID format' 
-      });
-    }
+    validateUUID(id, 'friendshipId');
 
     try {
       const friendCheck = await pool.query(
@@ -217,17 +214,16 @@ module.exports = async (fastify) => {
       );
 
       if (friendCheck.rows.length === 0) {
-        return reply.status(404).send({ 
-          error: 'Friendship not found' 
-        });
+        throw new NotFoundError('Friendship');
       }
 
       const { user_id_1, user_id_2 } = friendCheck.rows[0];
 
       if (userId !== user_id_1 && userId !== user_id_2) {
-        return reply.status(403).send({ 
-          error: 'Cannot delete this friendship' 
-        });
+        throw new AuthorizationError(
+          'Cannot delete this friendship',
+          'ACCESS_DENIED'
+        );
       }
 
       // Delete friendship
@@ -238,10 +234,10 @@ module.exports = async (fastify) => {
         message: 'Friendship removed'
       });
     } catch (err) {
-      console.error('Delete friendship error:', err.message);
-      return reply.status(500).send({ 
-        error: 'Failed to delete friendship' 
-      });
+      if (err instanceof ValidationError || err instanceof AuthorizationError || err instanceof NotFoundError) {
+        throw err;
+      }
+      throw new InternalError('Failed to delete friendship');
     }
   });
 
@@ -253,12 +249,7 @@ module.exports = async (fastify) => {
     const { id } = req.params;
     const userId = req.user.id;
 
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (!uuidRegex.test(id)) {
-      return reply.status(400).send({ 
-        error: 'Invalid friendship ID format' 
-      });
-    }
+    validateUUID(id, 'friendshipId');
 
     try {
       const friendCheck = await pool.query(
@@ -267,17 +258,16 @@ module.exports = async (fastify) => {
       );
 
       if (friendCheck.rows.length === 0) {
-        return reply.status(404).send({ 
-          error: 'Friendship not found' 
-        });
+        throw new NotFoundError('Friendship');
       }
 
       const { user_id_1, user_id_2 } = friendCheck.rows[0];
 
       if (userId !== user_id_1 && userId !== user_id_2) {
-        return reply.status(403).send({ 
-          error: 'Cannot block this friendship' 
-        });
+        throw new AuthorizationError(
+          'Cannot block this friendship',
+          'ACCESS_DENIED'
+        );
       }
 
       // Update status to blocked
@@ -295,10 +285,10 @@ module.exports = async (fastify) => {
         friendship: result.rows[0]
       });
     } catch (err) {
-      console.error('Block user error:', err.message);
-      return reply.status(500).send({ 
-        error: 'Failed to block user' 
-      });
+      if (err instanceof ValidationError || err instanceof AuthorizationError || err instanceof NotFoundError) {
+        throw err;
+      }
+      throw new InternalError('Failed to block user');
     }
   });
 
@@ -339,10 +329,7 @@ module.exports = async (fastify) => {
         count: result.rows.length
       });
     } catch (err) {
-      console.error('Get friendships error:', err.message);
-      return reply.status(500).send({ 
-        error: 'Failed to fetch friends' 
-      });
+      throw new InternalError('Failed to fetch friends');
     }
   });
 
@@ -392,10 +379,7 @@ module.exports = async (fastify) => {
         count: result.rows.length
       });
     } catch (err) {
-      console.error('Get pending requests error:', err.message);
-      return reply.status(500).send({ 
-        error: 'Failed to fetch pending requests' 
-      });
+      throw new InternalError('Failed to fetch pending requests');
     }
   });
 };
