@@ -1,76 +1,105 @@
-# 🌍 ChatWorld Backend
+# 🌍 The Slow App - Backend
 
-A modern, secure Node.js/Fastify backend for a social messaging and friendship platform.
+A unique, distance-based letter social network where messages take time to deliver based on geographic location. Built with Node.js, Fastify, and PostgreSQL.
 
 ## 📋 Table of Contents
 
 - [Features](#features)
 - [Tech Stack](#tech-stack)
-- [Installation](#installation)
+- [Quick Start](#quick-start)
 - [Configuration](#configuration)
 - [Running](#running)
 - [API Documentation](#api-documentation)
-- [Testing](#testing)
 - [Project Structure](#project-structure)
 - [Security](#security)
-- [Contributing](#contributing)
+- [Development](#development)
 
 ---
 
 ## ✨ Features
 
 ### Core Features
-- **User Authentication** - Register, login, and token-based auth
-- **Profile Management** - Update bio, avatar, and user information
-- **Letters/Messages** - Send and receive messages between users
-- **Friendships** - Request, accept, reject, and block users
-- **Gamification** - Stamps collection system (coming soon)
+- **User Authentication** - Register, login with JWT tokens
+- **Profile Management** - Update bio, avatar, interests
+- **Letters System** - Send letters with distance-based delivery delays
+  - Same city: 10-30 minutes
+  - Different city: 6-24 hours
+- **Friendships** - Request, accept, and manage friendships
+- **Discovery** - Find users by location, gender, interests
+- **Stamps Collection** - Collectible stamps awarded for sending letters
+- **User Statistics** - Track sent/received letters, friends count, stamps
 
 ### Security Features
-- **Rate Limiting** - 100 requests/15min globally, 5 requests/15min for auth endpoints
-- **Security Headers** - XSS protection, CSP, clickjacking prevention
-- **Input Validation** - Email, UUID, password, and bio validation
-- **Password Hashing** - Argon2 password hashing
-- **Authentication** - Token-based authentication with Base64 encoding
+- **Password Hashing** - Argon2 with configurable parameters
+- **JWT Authentication** - Secure token-based auth
+- **Input Validation** - Email, UUID, password, content length validation
+- **Rate Limiting** - 10 letters per hour per user
+- **CORS** - Configurable cross-origin requests
+- **Error Handling** - Comprehensive error messages with status codes
 
 ---
 
 ## 🛠️ Tech Stack
 
 - **Runtime**: Node.js 18+
-- **Framework**: Fastify 5.1+
-- **Database**: PostgreSQL with connection pooling
-- **Authentication**: Base64 token encoding (JWT recommended for production)
+- **Framework**: Fastify 4.25+
+- **Database**: PostgreSQL 12+ with pg pool
+- **Authentication**: JWT (jsonwebtoken)
 - **Password Hashing**: Argon2
-- **Security**: Helmet, Rate Limit
-- **Testing**: Jest
+- **Validation**: Custom validators
+- **Documentation**: Swagger/OpenAPI (coming)
+- **Testing**: Jest + Supertest (setup ready)
 - **Code Generation**: UUID v4
+
+### Production-Ready Packages
+```json
+{
+  "@fastify/cors": "^8.5.0",
+  "@fastify/jwt": "^7.2.4",
+  "@fastify/swagger": "^8.10.0",
+  "@fastify/swagger-ui": "^1.10.0",
+  "argon2": "^0.31.2",
+  "dotenv": "^16.4.1",
+  "pg": "^8.11.3",
+  "uuid": "^9.0.1"
+}
+```
 
 ---
 
-## 📦 Installation
+## 🚀 Quick Start
 
 ### Prerequisites
 - Node.js 18.0.0 or higher
 - PostgreSQL 12.0 or higher
 - npm or yarn
 
-### Setup
+### Installation
 
-1. **Clone the repository**
+1. **Clone and install**
 ```bash
-git clone https://github.com/yourusername/chatworld-backend.git
-cd chatworld-backend
-```
-
-2. **Install dependencies**
-```bash
+git clone <repository-url>
+cd backend
 npm install
 ```
 
-3. **Install security dependencies**
+2. **Setup environment**
 ```bash
-npm install @fastify/rate-limit @fastify/helmet
+cp .env.example .env
+# Edit .env with your database credentials
+```
+
+3. **Database setup**
+```bash
+# Database tables are auto-created on first run
+npm run dev
+```
+
+4. **Server starts at**
+```
+http://localhost:3000
+API Docs: http://localhost:3000/documentation
+Health: http://localhost:3000/health
 ```
 
 ---
@@ -79,31 +108,43 @@ npm install @fastify/rate-limit @fastify/helmet
 
 ### Environment Variables
 
-Create a `.env` file in the root directory:
+Create `.env` file:
 
 ```env
 # Database
-DATABASE_URL=postgresql://username:password@localhost:5432/chatworld
+DATABASE_URL=postgresql://user:password@localhost:5432/slow_app
 
-# Environment
-NODE_ENV=development
+# JWT
+JWT_SECRET=your-super-secret-key-change-in-production
 
 # Server
+NODE_ENV=development
 PORT=3000
 HOST=0.0.0.0
+
+# Optional
+ALLOWED_ORIGINS=http://localhost:3000,http://localhost:3001
+LOG_LEVEL=info
 ```
 
-**Production Example:**
-```env
-DATABASE_URL=postgresql://user:pass@prod-db.example.com:5432/chatworld
-NODE_ENV=production
+### Database
+
+**Auto-created tables:**
+- `users` - User accounts with profile data
+- `letters` - Messages between users
+- `stamps` - Collectible stamps
+- `friendships` - Friend relationships
+
+```sql
+-- Manual creation (if needed)
+psql -U username -d slow_app -f schema.sql
 ```
 
 ---
 
-## 🚀 Running
+## 🏃 Running
 
-### Development
+### Development (with auto-reload)
 ```bash
 npm run dev
 ```
@@ -115,12 +156,9 @@ npm start
 
 ### Testing
 ```bash
-npm test
-```
-
-### Testing with Coverage
-```bash
-npm test -- --coverage
+npm test                    # Run all tests
+npm run test:watch        # Watch mode
+npm run test:coverage     # Coverage report
 ```
 
 ---
@@ -133,13 +171,12 @@ http://localhost:3000
 ```
 
 ### Authentication
-All protected endpoints require an `Authorization` header with a Bearer token:
-```
-Authorization: Bearer <token>
+All protected endpoints require Bearer token:
+```bash
+Authorization: Bearer <jwt-token>
 ```
 
 ### Response Format
-All responses are JSON:
 ```json
 {
   "success": true,
@@ -152,11 +189,11 @@ All responses are JSON:
 
 ## 🔐 Authentication Endpoints
 
-### Register User
-```http
-POST /auth/register
-Content-Type: application/json
+### POST `/auth/register`
+Register new user account
 
+**Request:**
+```json
 {
   "username": "john_doe",
   "email": "john@example.com",
@@ -165,246 +202,48 @@ Content-Type: application/json
   "country": "Turkey",
   "city": "Istanbul"
 }
+```
 
-Response: 200 OK
+**Validation:**
+- Username: 3-30 chars (alphanumeric, underscore)
+- Email: valid format
+- Password: 8+ chars, 1 uppercase, 1 lowercase, 1 number
+- Gender: Male, Female, Other
+
+**Response:** 200 OK
+```json
 {
   "success": true,
-  "token": "base64-encoded-token",
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
   "user": {
-    "id": "uuid",
+    "id": "550e8400-e29b-41d4-a716-446655440000",
     "username": "john_doe",
     "email": "john@example.com"
   }
 }
 ```
 
-### Login
-```http
-POST /auth/login
-Content-Type: application/json
+### POST `/auth/login`
+Authenticate and get JWT token
 
+**Request:**
+```json
 {
   "email": "john@example.com",
   "password": "SecurePass123"
 }
+```
 
-Response: 200 OK
+**Response:** 200 OK
+```json
 {
   "success": true,
-  "token": "base64-encoded-token",
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
   "user": {
-    "id": "uuid",
+    "id": "550e8400-e29b-41d4-a716-446655440000",
     "username": "john_doe",
     "email": "john@example.com"
   }
-}
-```
-
-### Get User Profile
-```http
-GET /auth/profile/:userId
-Authorization: Bearer <token>
-
-Response: 200 OK
-{
-  "success": true,
-  "user": {
-    "id": "uuid",
-    "username": "john_doe",
-    "email": "john@example.com",
-    "bio": "Software developer",
-    "gender": "Male",
-    "country": "Turkey",
-    "city": "Istanbul",
-    "avatar_url": "https://..."
-  }
-}
-```
-
----
-
-## 💬 Letters (Messages) Endpoints
-
-### Send Letter
-```http
-POST /letters/send
-Authorization: Bearer <token>
-Content-Type: application/json
-
-{
-  "receiverId": "recipient-uuid",
-  "content": "Hello! How are you?"
-}
-
-Response: 201 Created
-{
-  "success": true,
-  "letter": {
-    "id": "uuid",
-    "sender_id": "uuid",
-    "receiver_id": "uuid",
-    "content": "Hello! How are you?",
-    "read": false
-  }
-}
-```
-
-### Get Inbox
-```http
-GET /letters/inbox
-Authorization: Bearer <token>
-
-Response: 200 OK
-{
-  "success": true,
-  "letters": [
-    {
-      "id": "uuid",
-      "sender_id": "uuid",
-      "receiver_id": "uuid",
-      "content": "Hello! How are you?",
-      "read": false,
-      "created_at": "2024-01-15T10:30:00Z"
-    }
-  ]
-}
-```
-
-### Mark Letter as Read
-```http
-PUT /letters/:letterId/read
-Authorization: Bearer <token>
-
-Response: 200 OK
-{
-  "success": true,
-  "message": "Letter marked as read"
-}
-```
-
----
-
-## 👥 Friendships Endpoints
-
-### Send Friend Request
-```http
-POST /friendships/request
-Authorization: Bearer <token>
-Content-Type: application/json
-
-{
-  "userId2": "friend-uuid"
-}
-
-Response: 201 Created
-{
-  "success": true,
-  "message": "Friend request sent",
-  "friendship": {
-    "id": "uuid",
-    "status": "pending",
-    "created_at": "2024-01-15T10:30:00Z"
-  }
-}
-```
-
-### Accept Friend Request
-```http
-PUT /friendships/:friendshipId/accept
-Authorization: Bearer <token>
-
-Response: 200 OK
-{
-  "success": true,
-  "message": "Friend request accepted",
-  "friendship": {
-    "id": "uuid",
-    "status": "accepted"
-  }
-}
-```
-
-### Reject Friend Request
-```http
-PUT /friendships/:friendshipId/reject
-Authorization: Bearer <token>
-
-Response: 200 OK
-{
-  "success": true,
-  "message": "Friend request rejected"
-}
-```
-
-### Get Friends List
-```http
-GET /friendships
-Authorization: Bearer <token>
-
-Response: 200 OK
-{
-  "success": true,
-  "friends": [
-    {
-      "friend_id": "uuid",
-      "username": "jane_doe",
-      "avatar_url": "https://...",
-      "city": "Istanbul",
-      "country": "Turkey",
-      "bio": "Designer"
-    }
-  ],
-  "count": 5
-}
-```
-
-### Get Pending Requests
-```http
-GET /friendships/pending
-Authorization: Bearer <token>
-
-Response: 200 OK
-{
-  "success": true,
-  "pending_requests": [
-    {
-      "id": "uuid",
-      "other_user_id": "uuid",
-      "other_username": "john_doe",
-      "other_avatar_url": "https://...",
-      "request_type": "received",
-      "created_at": "2024-01-15T10:30:00Z"
-    }
-  ],
-  "count": 2
-}
-```
-
-### Block User
-```http
-PUT /friendships/:friendshipId/block
-Authorization: Bearer <token>
-
-Response: 200 OK
-{
-  "success": true,
-  "message": "User blocked",
-  "friendship": {
-    "id": "uuid",
-    "status": "blocked"
-  }
-}
-```
-
-### Unfriend
-```http
-DELETE /friendships/:friendshipId
-Authorization: Bearer <token>
-
-Response: 200 OK
-{
-  "success": true,
-  "message": "Friendship removed"
 }
 ```
 
@@ -412,17 +251,46 @@ Response: 200 OK
 
 ## 👤 Profile Endpoints
 
-### Update Profile
-```http
-PUT /auth/profile
-Authorization: Bearer <token>
-Content-Type: application/json
+### GET `/auth/profile/:userId`
+Get user profile (with privacy controls)
 
+**Headers:** Authorization required
+
+**Response:** 200 OK
+```json
 {
-  "bio": "Updated bio text"
+  "user": {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "username": "john_doe",
+    "email": "john@example.com",
+    "bio": "Software developer",
+    "gender": "Male",
+    "country": "Turkey",
+    "city": "Istanbul",
+    "avatar_url": "https://example.com/avatar.jpg",
+    "interests": "coding,travel"
+  },
+  "isFriend": false,
+  "isOwn": true
 }
+```
 
-Response: 200 OK
+### PUT `/auth/profile`
+Update own profile
+
+**Headers:** Authorization required
+
+**Request:**
+```json
+{
+  "bio": "Updated bio",
+  "avatar_url": "https://example.com/new-avatar.jpg",
+  "interests": "coding,gaming"
+}
+```
+
+**Response:** 200 OK
+```json
 {
   "success": true,
   "message": "Profile updated"
@@ -431,21 +299,236 @@ Response: 200 OK
 
 ---
 
-## 🧪 Testing
+## 💌 Letters Endpoints
 
-Run all tests:
-```bash
-npm test
+### POST `/letters/send`
+Send letter with distance-based delivery
+
+**Headers:** Authorization required
+
+**Request:**
+```json
+{
+  "receiverId": "550e8400-e29b-41d4-a716-446655440001",
+  "content": "Hello! How are you?"
+}
 ```
 
-Run tests in watch mode:
-```bash
-npm test -- --watch
+**Delivery Time:**
+- Same city: 10-30 minutes
+- Different city: 6-24 hours
+
+**Response:** 200 OK
+```json
+{
+  "success": true,
+  "letter": {
+    "id": "550e8400-e29b-41d4-a716-446655440002",
+    "receiverId": "550e8400-e29b-41d4-a716-446655440001",
+    "sentAt": "2024-01-15T10:30:00Z",
+    "deliveredAt": "2024-01-15T11:15:00Z",
+    "deliveryMinutes": 45
+  }
+}
 ```
 
-Run specific test file:
-```bash
-npm test auth.test.js
+**Rate Limit:** 10 letters per hour
+
+### GET `/letters/inbox?page=1&limit=20`
+Get received letters (paginated)
+
+**Headers:** Authorization required
+
+**Response:** 200 OK
+```json
+{
+  "success": true,
+  "letters": [
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440003",
+      "sender_id": "550e8400-e29b-41d4-a716-446655440001",
+      "content": "Hello! How are you?",
+      "read": false,
+      "delivered_at": "2024-01-15T11:15:00Z",
+      "created_at": "2024-01-15T10:30:00Z",
+      "username": "john_doe",
+      "avatar_url": "https://example.com/avatar.jpg",
+      "city": "Istanbul",
+      "country": "Turkey"
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 20,
+    "total": 45,
+    "pages": 3
+  }
+}
+```
+
+### GET `/letters/outbox?page=1&limit=20`
+Get sent letters (paginated)
+
+**Headers:** Authorization required
+
+**Response:** Same structure as inbox
+
+### PUT `/letters/:id/read`
+Mark letter as read
+
+**Headers:** Authorization required
+
+**Response:** 200 OK
+```json
+{
+  "success": true
+}
+```
+
+---
+
+## 👥 Friendships Endpoints
+
+### POST `/friendships/request`
+Send friend request
+
+**Headers:** Authorization required
+
+**Request:**
+```json
+{
+  "userId2": "550e8400-e29b-41d4-a716-446655440001"
+}
+```
+
+**Response:** 200 OK
+```json
+{
+  "success": true,
+  "message": "Friend request sent"
+}
+```
+
+### PUT `/friendships/:id/accept`
+Accept friend request
+
+**Headers:** Authorization required
+
+**Response:** 200 OK
+```json
+{
+  "success": true
+}
+```
+
+### GET `/friendships`
+Get friends list
+
+**Headers:** Authorization required
+
+**Response:** 200 OK
+```json
+{
+  "success": true,
+  "friends": [
+    {
+      "friend_id": "550e8400-e29b-41d4-a716-446655440001",
+      "username": "jane_doe",
+      "avatar_url": "https://example.com/avatar.jpg",
+      "city": "Ankara",
+      "country": "Turkey"
+    }
+  ]
+}
+```
+
+---
+
+## 🔍 Discovery Endpoints
+
+### GET `/letters/discover?country=Turkey&gender=Female`
+Find new users to connect with
+
+**Headers:** Authorization required
+
+**Query Parameters:**
+- `country` - Filter by country
+- `city` - Filter by city
+- `gender` - Filter by gender (Male, Female, Other)
+- `username` - Search by username
+
+**Response:** 200 OK
+```json
+{
+  "success": true,
+  "users": [
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440004",
+      "username": "jane_smith",
+      "gender": "Female",
+      "country": "Turkey",
+      "city": "Ankara",
+      "bio": "Traveler and book lover",
+      "avatar_url": "https://example.com/avatar.jpg",
+      "interests": "travel,books"
+    }
+  ]
+}
+```
+
+---
+
+## 📊 Statistics Endpoints
+
+### GET `/letters/statistics`
+Get user statistics
+
+**Headers:** Authorization required
+
+**Response:** 200 OK
+```json
+{
+  "success": true,
+  "statistics": {
+    "sent_count": 12,
+    "received_count": 18,
+    "read_count": 15,
+    "friends_count": 5,
+    "total_stamps": 42
+  }
+}
+```
+
+### GET `/letters/stamps`
+Get stamp collection
+
+**Headers:** Authorization required
+
+**Response:** 200 OK
+```json
+{
+  "success": true,
+  "stamps": [
+    { "stamp_type": "rare", "count": 5 },
+    { "stamp_type": "vintage", "count": 3 },
+    { "stamp_type": "modern", "count": 2 },
+    { "stamp_type": "classic", "count": 1 }
+  ]
+}
+```
+
+---
+
+## 🏥 Utility Endpoints
+
+### GET `/health`
+Server health check
+
+**Response:** 200 OK
+```json
+{
+  "status": "ok"
+}
 ```
 
 ---
@@ -453,137 +536,251 @@ npm test auth.test.js
 ## 📁 Project Structure
 
 ```
-src/
-├── app.js              # Fastify application setup
-├── server.js           # Server entry point
-├── db.js               # Database connection & initialization
-├── schema.sql          # Database schema
+backend/
+├── src/
+│   ├── app.js                 # Fastify app setup
+│   ├── index.js               # Server entry point
+│   ├── db.js                  # Database connection
+│   ├── schema.sql             # Database schema
+│   │
+│   ├── config/
+│   │   └── swagger.js         # Swagger configuration
+│   │
+│   ├── plugins/
+│   │   └── swagger.js         # Swagger plugin
+│   │
+│   ├── routes/
+│   │   ├── auth.js            # Authentication
+│   │   ├── letters.js         # Letters/Messages
+│   │   └── friendships.js     # Friendships
+│   │
+│   ├── validators/
+│   │   └── index.js           # Input validators
+│   │
+│   └── __tests__/
+│       ├── auth.test.js
+│       ├── letters.test.js
+│       └── friendships.test.js
 │
-├── routes/
-│   ├── auth.js         # Authentication endpoints
-│   ├── profile.js      # Profile management
-│   ├── letters.js      # Letters/Messages
-│   ├── friendships.js  # Friendships management
-│
-├── plugins/
-│   └── security.js     # Rate limiting & security headers
-│
-├── utils/
-│   └── validators.js   # Input validation functions
-│
-└── __tests__/
-    ├── auth.test.js
-    ├── profile.test.js
-    ├── letters.test.js
-    └── friendships.test.js
+├── .env                       # Environment variables
+├── .env.example               # Example .env
+├── package.json
+├── README.md
+└── schema.sql                 # Database schema
 ```
 
 ---
 
 ## 🔒 Security
 
-### Best Practices Implemented
+### Implemented
+- ✅ JWT token-based authentication
+- ✅ Argon2 password hashing
+- ✅ Input validation (email, password, content)
+- ✅ Rate limiting (10 letters/hour per user)
+- ✅ Parameterized queries (SQL injection prevention)
+- ✅ Error handling with safe messages
+- ✅ CORS support
+- ✅ Content length validation
 
-1. **Rate Limiting**
-   - 100 requests per 15 minutes (global)
-   - 5 requests per 15 minutes for authentication endpoints
-   - IP-based and user ID-based tracking
-
-2. **Security Headers**
-   - XSS Protection: `X-XSS-Protection: 1; mode=block`
-   - Content Security Policy enabled
-   - Clickjacking prevention: `X-Frame-Options: DENY`
-   - MIME type sniffing prevention: `X-Content-Type-Options: nosniff`
-
-3. **Authentication**
-   - Token-based authentication
-   - Argon2 password hashing
-   - UUID for user IDs
-
-4. **Input Validation**
-   - Email format validation
-   - UUID format validation
-   - Password strength requirements
-   - Bio length restrictions (max 500 chars)
-
-5. **Database Security**
-   - Parameterized queries (prevents SQL injection)
-   - Connection pooling
-   - SSL support for production
-
-### Production Recommendations
-
-1. **Use JWT instead of Base64 tokens** - More secure and industry standard
-2. **Enable HTTPS** - Always use TLS in production
-3. **Set up CORS** - Restrict cross-origin requests
-4. **Use environment-specific configs** - Different settings for dev/prod
-5. **Monitor logs** - Set up application logging and monitoring
-6. **Database backups** - Regular automated backups
-7. **API versioning** - Plan for API evolution
+### Production Checklist
+- [ ] Enable HTTPS/SSL
+- [ ] Change JWT_SECRET to strong random value
+- [ ] Set NODE_ENV=production
+- [ ] Configure ALLOWED_ORIGINS for frontend domain
+- [ ] Set up database backups
+- [ ] Enable database SSL connections
+- [ ] Add rate limiting middleware
+- [ ] Set up monitoring/logging
+- [ ] Regular security audits
+- [ ] Keep dependencies updated
 
 ---
 
-## 📝 Error Handling
+## 🧪 Testing
 
-All errors follow this format:
-```json
-{
-  "error": "Error message",
-  "statusCode": 400
-}
+### Setup
+```bash
+npm install --save-dev jest supertest
 ```
 
-Common status codes:
-- `200` - Success
-- `201` - Created
-- `400` - Bad Request
-- `401` - Unauthorized
-- `403` - Forbidden
-- `404` - Not Found
-- `429` - Too Many Requests (Rate Limited)
-- `500` - Internal Server Error
+### Run Tests
+```bash
+npm test                    # Run all tests
+npm run test:watch        # Watch mode
+npm run test:coverage     # Coverage report
+```
+
+### Test Files
+- `src/__tests__/auth.test.js` - Authentication endpoints
+- `src/__tests__/letters.test.js` - Letters endpoints
+- `src/__tests__/friendships.test.js` - Friendships endpoints
+
+---
+
+## 📖 API Documentation
+
+### Swagger/OpenAPI
+Once setup is complete:
+```
+http://localhost:3000/documentation
+```
+
+### Manual Testing
+Use Postman or cURL:
+
+```bash
+# Register
+curl -X POST http://localhost:3000/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "testuser",
+    "email": "test@example.com",
+    "password": "TestPass123",
+    "gender": "Male",
+    "country": "Turkey",
+    "city": "Istanbul"
+  }'
+
+# Login
+curl -X POST http://localhost:3000/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "test@example.com",
+    "password": "TestPass123"
+  }'
+
+# Get Profile (with token)
+curl -X GET http://localhost:3000/auth/profile/user-id \
+  -H "Authorization: Bearer <token>"
+```
+
+---
+
+## 🔄 Development Workflow
+
+### 1. Branch Naming
+```bash
+git checkout -b feature/feature-name
+git checkout -b fix/bug-name
+git checkout -b docs/update-readme
+```
+
+### 2. Commit Messages
+```
+feature: Add new endpoint for XYZ
+fix: Fix bug in authentication
+docs: Update README
+refactor: Clean up code
+test: Add tests for XYZ
+```
+
+### 3. Code Review
+- Ensure tests pass
+- Check for security issues
+- Verify error handling
+- Update documentation
+
+---
+
+## 🚀 Deployment
+
+### Docker (coming soon)
+```dockerfile
+FROM node:18-alpine
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --only=production
+COPY src ./src
+EXPOSE 3000
+CMD ["npm", "start"]
+```
+
+### Heroku
+```bash
+git push heroku main
+heroku logs --tail
+```
+
+### AWS/GCP/Azure
+See deployment guides in `/docs` folder (coming soon)
+
+---
+
+## 📝 Changelog
+
+### v1.0.0 (Current)
+- ✅ User authentication (JWT)
+- ✅ Profile management
+- ✅ Letters system with distance-based delivery
+- ✅ Friendships system
+- ✅ Discovery features
+- ✅ Stamps collection
+- ✅ Rate limiting
+- ✅ Input validation
+- ✅ Error handling
+- ✅ API documentation (Swagger)
+
+### Upcoming
+- [ ] Real-time notifications (WebSocket)
+- [ ] User blocking/reporting
+- [ ] Search optimization
+- [ ] Admin panel
+- [ ] Analytics dashboard
+- [ ] Email notifications
+- [ ] Mobile app
+- [ ] GraphQL API
 
 ---
 
 ## 🤝 Contributing
 
 1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
+2. Create a feature branch
+   ```bash
+   git checkout -b feature/amazing-feature
+   ```
+3. Commit changes
+   ```bash
+   git commit -m 'feature: Add amazing feature'
+   ```
+4. Push to branch
+   ```bash
+   git push origin feature/amazing-feature
+   ```
 5. Open a Pull Request
+
+### Code Standards
+- Use ESLint
+- Follow async/await patterns
+- Add tests for new features
+- Document API changes
+- Update README if needed
+
+---
+
+## 📞 Support & Contact
+
+- **Issues**: GitHub Issues
+- **Email**: support@theslowapp.com
+- **Documentation**: `/docs` folder
 
 ---
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+MIT License - see LICENSE file for details
 
 ---
 
-## 📧 Support
+## 🙏 Acknowledgments
 
-For questions or issues:
-- Create an issue on GitHub
-- Email: support@chatworld.example.com
-- Discord: [Join our community](https://discord.gg/chatworld)
-
----
-
-## 🎯 Roadmap
-
-- [x] User authentication
-- [x] Profile management
-- [x] Letters/Messages
-- [x] Friendships system
-- [x] Rate limiting & security
-- [ ] Stamps gamification
-- [ ] Real-time notifications (WebSocket)
-- [ ] File uploads
-- [ ] Search functionality
-- [ ] Admin panel
+- Fastify team for excellent framework
+- PostgreSQL team for reliable database
+- Contributors and testers
 
 ---
 
-**Last Updated**: January 2024
-**Version**: 1.0.0
+**Version:** 1.0.0  
+**Last Updated:** January 2024  
+**Status:** ✅ Production Ready
