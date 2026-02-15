@@ -1,0 +1,56 @@
+TAP version 14
+# Subtest: staticCSP = undefined
+    1..3
+    ok 1 - should be equal
+    ok 2 - should be equal
+    ok 3 - should be equal
+ok 1 - staticCSP = undefined # time=96.775ms
+
+# Subtest: staticCSP = true
+    1..5
+    ok 1 - should be equal
+    ok 2 - should be equal
+    ok 3 - should be equal
+    ok 4 - should be equal
+    ok 5 - should be equal
+ok 2 - staticCSP = true # time=24.149ms
+
+# Subtest: staticCSP = "default-src 'self';"
+    1..5
+    ok 1 - should be equal
+    ok 2 - should be equal
+    ok 3 - should be equal
+    ok 4 - should be equal
+    ok 5 - should be equal
+ok 3 - staticCSP = "default-src 'self';" # time=14.68ms
+
+# Subtest: staticCSP = object
+    1..5
+    ok 1 - should be equal
+    ok 2 - should be equal
+    ok 3 - should be equal
+    ok 4 - should be equal
+    ok 5 - should be equal
+ok 4 - staticCSP = object # time=20.405ms
+
+# Subtest: transformStaticCSP = function
+    1..6
+    ok 1 - should be equal
+    ok 2 - should be equal
+    ok 3 - should be equal
+    ok 4 - should be equal
+    ok 5 - should be equal
+    ok 6 - should be equal
+ok 5 - transformStaticCSP = function # time=21.205ms
+
+# Subtest: transformStaticCSP = function, with @fastify/helmet
+    1..6
+    ok 1 - should be equal
+    ok 2 - should be equal
+    ok 3 - should be equal
+    ok 4 - should be equal
+    ok 5 - should be equal
+    ok 6 - should be equal
+ok 6 - transformStaticCSP = function, with @fastify/helmet # time=24.111ms
+
+1..6

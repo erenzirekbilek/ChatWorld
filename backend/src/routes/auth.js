@@ -1,203 +1,359 @@
-// src/routes/auth.js
-const argon2 = require("argon2");
-const { pool } = require("../db");
-const { v4: uuid } = require("uuid");
-const {
-  ValidationError,
-  NotFoundError,
-  InternalError,
-  ConflictError
-} = require("../utils/errors");
+// src/routes/auth.js - WITH SWAGGER
 
-// Simple token generator (for testing - use JWT in production)
-const generateToken = (userId, username) => {
-  return Buffer.from(`${userId}:${username}:${Date.now()}`).toString('base64');
+const { pool } = require('../db');
+const argon2 = require('argon2');
+const { v4: uuid } = require('uuid');
+
+const validateEmail = (email) => {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email) && email.length <= 100;
 };
 
-module.exports = async function (fastify) {
-  // ===================================
+const validatePassword = (password) => {
+  return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,128}$/.test(password);
+};
+
+const validateUsername = (username) => {
+  return /^[a-zA-Z0-9_]{3,30}$/.test(username);
+};
+
+module.exports = async (fastify) => {
   // POST /auth/register
-  // ===================================
-  fastify.post("/register", async (req, reply) => {
+  fastify.post('/register', {
+    schema: {
+      tags: ['Authentication'],
+      description: 'Register new user',
+      body: {
+        type: 'object',
+        required: ['username', 'email', 'password', 'gender', 'country', 'city'],
+        properties: {
+          username: { type: 'string', minLength: 3, maxLength: 30 },
+          email: { type: 'string', format: 'email' },
+          password: { type: 'string', minLength: 8 },
+          gender: { type: 'string', enum: ['Male', 'Female', 'Other'] },
+          country: { type: 'string' },
+          city: { type: 'string' }
+        }
+      },
+      response: {
+        200: {
+          description: 'Registration successful',
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            token: { type: 'string' },
+            user: {
+              type: 'object',
+              properties: {
+                id: { type: 'string' },
+                username: { type: 'string' },
+                email: { type: 'string' }
+              }
+            }
+          }
+        },
+        400: {
+          description: 'Validation error',
+          type: 'object',
+          properties: {
+            error: { type: 'string' }
+          }
+        },
+        409: {
+          description: 'User already exists',
+          type: 'object',
+          properties: {
+            error: { type: 'string' }
+          }
+        }
+      }
+    }
+  }, async (req, reply) => {
     const { username, email, password, gender, country, city } = req.body;
 
-    // Validation
-    if (!username || username.length < 3 || username.length > 50) {
-      throw new ValidationError(
-        "Username must be between 3-50 characters",
-        "INVALID_USERNAME"
-      );
+    if (!validateUsername(username)) {
+      return reply.status(400).send({
+        error: 'Username: 3-30 chars (alphanumeric, underscore only)'
+      });
     }
 
-    if (!email || !email.includes("@")) {
-      throw new ValidationError(
-        "Invalid email format",
-        "INVALID_EMAIL"
-      );
+    if (!validateEmail(email)) {
+      return reply.status(400).send({ error: 'Invalid email format' });
     }
 
-    if (!password || password.length < 8) {
-      throw new ValidationError(
-        "Password must be at least 8 characters",
-        "WEAK_PASSWORD"
-      );
+    if (!validatePassword(password)) {
+      return reply.status(400).send({
+        error: 'Password: 8+ chars with 1 uppercase, 1 lowercase, 1 number'
+      });
     }
 
-    const validGenders = ["Male", "Female", "Other"];
-    if (!gender || !validGenders.includes(gender)) {
-      throw new ValidationError(
-        `Gender must be one of: ${validGenders.join(", ")}`,
-        "INVALID_GENDER"
-      );
+    if (!['Male', 'Female', 'Other'].includes(gender)) {
+      return reply.status(400).send({
+        error: 'Gender must be Male, Female, or Other'
+      });
     }
 
-    if (!country || country.length < 2 || country.length > 100) {
-      throw new ValidationError(
-        "Country must be between 2-100 characters",
-        "INVALID_COUNTRY"
-      );
+    if (!country || country.length === 0 || country.length > 100) {
+      return reply.status(400).send({
+        error: 'Country: 1-100 characters'
+      });
     }
 
-    if (!city || city.length < 2 || city.length > 100) {
-      throw new ValidationError(
-        "City must be between 2-100 characters",
-        "INVALID_CITY"
-      );
+    if (!city || city.length === 0 || city.length > 100) {
+      return reply.status(400).send({
+        error: 'City: 1-100 characters'
+      });
     }
 
     try {
-      const hash = await argon2.hash(password);
-      const id = uuid();
+      const existing = await pool.query(
+        'SELECT id FROM users WHERE username = $1 OR email = $2',
+        [username, email]
+      );
+
+      if (existing.rows.length > 0) {
+        return reply.status(409).send({
+          error: 'Username or email already exists'
+        });
+      }
+
+      const passwordHash = await argon2.hash(password, {
+        type: argon2.argon2id,
+        memoryCost: 2 ** 16,
+        timeCost: 3,
+        parallelism: 1
+      });
+
+      const userId = uuid();
 
       await pool.query(
         `INSERT INTO users (id, username, email, password_hash, gender, country, city)
          VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-        [id, username, email, hash, gender, country, city]
+        [userId, username, email, passwordHash, gender, country, city]
       );
 
-      const token = generateToken(id, username);
+      const token = fastify.jwt.sign(
+        { id: userId, username, email },
+        { expiresIn: '30d' }
+      );
 
-      return reply.code(200).send({
+      return {
         success: true,
-        message: "User registered successfully",
         token,
-        user: {
-          id,
-          username,
-          email,
-        },
-      });
+        user: { id: userId, username, email }
+      };
     } catch (err) {
-      if (err.code === "23505") {
-        // Unique constraint violation
-        if (err.constraint === "users_username_key") {
-          throw new ConflictError(
-            "Username already exists",
-            "USERNAME_EXISTS"
-          );
-        }
-        if (err.constraint === "users_email_key") {
-          throw new ConflictError(
-            "Email already exists",
-            "EMAIL_EXISTS"
-          );
-        }
+      console.error('Register error:', err.message);
+
+      if (err.code === '23505') {
+        return reply.status(409).send({
+          error: 'Username or email already exists'
+        });
       }
-      throw new InternalError("Failed to register user");
+
+      return reply.status(500).send({ error: 'Registration failed' });
     }
   });
 
-  // ===================================
   // POST /auth/login
-  // ===================================
-  fastify.post("/login", async (req, reply) => {
+  fastify.post('/login', {
+    schema: {
+      tags: ['Authentication'],
+      description: 'Login and get JWT token',
+      body: {
+        type: 'object',
+        required: ['email', 'password'],
+        properties: {
+          email: { type: 'string', format: 'email' },
+          password: { type: 'string' }
+        }
+      },
+      response: {
+        200: {
+          description: 'Login successful',
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            token: { type: 'string' },
+            user: {
+              type: 'object',
+              properties: {
+                id: { type: 'string' },
+                username: { type: 'string' },
+                email: { type: 'string' }
+              }
+            }
+          }
+        },
+        400: {
+          description: 'Missing fields',
+          type: 'object',
+          properties: { error: { type: 'string' } }
+        },
+        401: {
+          description: 'Invalid credentials',
+          type: 'object',
+          properties: { error: { type: 'string' } }
+        }
+      }
+    }
+  }, async (req, reply) => {
     const { email, password } = req.body;
 
     if (!email || !password) {
-      throw new ValidationError(
-        "Email and password are required",
-        "MISSING_CREDENTIALS"
-      );
+      return reply.status(400).send({
+        error: 'Email and password required'
+      });
     }
 
     try {
       const result = await pool.query(
-        `SELECT * FROM users WHERE email = $1`,
+        'SELECT id, username, email, password_hash FROM users WHERE email = $1',
         [email]
       );
 
       if (result.rows.length === 0) {
-        throw new ValidationError(
-          "Invalid email or password",
-          "INVALID_CREDENTIALS"
-        );
+        return reply.status(401).send({ error: 'Invalid email or password' });
       }
 
       const user = result.rows[0];
-      const valid = await argon2.verify(user.password_hash, password);
+      const passwordValid = await argon2.verify(user.password_hash, password);
 
-      if (!valid) {
-        throw new ValidationError(
-          "Invalid email or password",
-          "INVALID_CREDENTIALS"
-        );
+      if (!passwordValid) {
+        return reply.status(401).send({ error: 'Invalid email or password' });
       }
 
-      const token = generateToken(user.id, user.username);
+      const token = fastify.jwt.sign(
+        { id: user.id, username: user.username, email: user.email },
+        { expiresIn: '30d' }
+      );
 
-      return reply.send({
+      return {
         success: true,
-        message: "Login successful",
         token,
         user: {
           id: user.id,
           username: user.username,
-          email: user.email,
-        },
-      });
+          email: user.email
+        }
+      };
     } catch (err) {
-      if (err instanceof ValidationError) {
-        throw err;
-      }
-      throw new InternalError("Login failed");
+      console.error('Login error:', err.message);
+      return reply.status(500).send({ error: 'Login failed' });
     }
   });
 
-  // ===================================
-  // GET /auth/profile/:userId
-  // ===================================
-  fastify.get("/profile/:userId", async (req, reply) => {
+  // GET /profile/:userId
+  fastify.get('/profile/:userId', {
+    schema: {
+      tags: ['Profile'],
+      description: 'Get user profile',
+      security: [{ bearerAuth: [] }],
+      params: {
+        type: 'object',
+        properties: {
+          userId: { type: 'string' }
+        }
+      },
+      response: {
+        200: {
+          description: 'Profile retrieved',
+          type: 'object',
+          properties: {
+            user: {
+              type: 'object',
+              properties: {
+                id: { type: 'string' },
+                username: { type: 'string' },
+                bio: { type: 'string' },
+                city: { type: 'string' },
+                country: { type: 'string' }
+              }
+            },
+            isFriend: { type: 'boolean' },
+            isOwn: { type: 'boolean' }
+          }
+        },
+        401: { type: 'object', properties: { error: { type: 'string' } } },
+        404: { type: 'object', properties: { error: { type: 'string' } } }
+      }
+    },
+    onRequest: [fastify.authenticate]
+  }, async (req, reply) => {
     const { userId } = req.params;
-
-    // Validate UUID format
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (!uuidRegex.test(userId)) {
-      throw new ValidationError(
-        "Invalid user ID format",
-        "INVALID_USER_ID"
-      );
-    }
+    const currentUserId = req.user.id;
 
     try {
       const result = await pool.query(
-        `SELECT id, username, email, bio, avatar_url, gender, country, city, created_at 
-         FROM users WHERE id = $1`,
+        `SELECT id, username, avatar_url, city, country, bio FROM users WHERE id = $1`,
         [userId]
       );
 
       if (result.rows.length === 0) {
-        throw new NotFoundError("User");
+        return reply.status(404).send({ error: 'User not found' });
       }
 
-      return reply.code(200).send({
-        success: true,
+      return {
         user: result.rows[0],
-      });
+        isFriend: false,
+        isOwn: currentUserId === userId
+      };
     } catch (err) {
-      if (err instanceof NotFoundError || err instanceof ValidationError) {
-        throw err;
+      console.error('Get profile error:', err.message);
+      return reply.status(500).send({ error: 'Failed to fetch profile' });
+    }
+  });
+
+  // PUT /profile
+  fastify.put('/profile', {
+    schema: {
+      tags: ['Profile'],
+      description: 'Update user profile',
+      security: [{ bearerAuth: [] }],
+      body: {
+        type: 'object',
+        properties: {
+          bio: { type: 'string', maxLength: 500 },
+          avatar_url: { type: 'string' },
+          interests: { type: 'string', maxLength: 200 }
+        }
+      },
+      response: {
+        200: {
+          description: 'Profile updated',
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            message: { type: 'string' }
+          }
+        },
+        400: { type: 'object', properties: { error: { type: 'string' } } },
+        401: { type: 'object', properties: { error: { type: 'string' } } }
       }
-      throw new InternalError("Failed to fetch profile");
+    },
+    onRequest: [fastify.authenticate]
+  }, async (req, reply) => {
+    const userId = req.user.id;
+    const { bio, avatar_url, interests } = req.body;
+
+    if (bio && bio.length > 500) {
+      return reply.status(400).send({ error: 'Bio max 500 characters' });
+    }
+
+    try {
+      await pool.query(
+        `UPDATE users SET 
+          bio = COALESCE($1, bio),
+          avatar_url = COALESCE($2, avatar_url),
+          interests = COALESCE($3, interests),
+          updated_at = NOW()
+         WHERE id = $4`,
+        [bio || null, avatar_url || null, interests || null, userId]
+      );
+
+      return { success: true, message: 'Profile updated' };
+    } catch (err) {
+      console.error('Update profile error:', err.message);
+      return reply.status(500).send({ error: 'Update failed' });
     }
   });
 };
