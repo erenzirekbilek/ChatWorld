@@ -1,4 +1,4 @@
-// src/routes/auth.js - WITH SWAGGER
+// src/routes/auth.js
 
 const { pool } = require('../db');
 const argon2 = require('argon2');
@@ -55,6 +55,7 @@ module.exports = async (fastify) => {
           description: 'Validation error',
           type: 'object',
           properties: {
+            success: { type: 'boolean' },
             error: { type: 'string' }
           }
         },
@@ -62,6 +63,7 @@ module.exports = async (fastify) => {
           description: 'User already exists',
           type: 'object',
           properties: {
+            success: { type: 'boolean' },
             error: { type: 'string' }
           }
         }
@@ -72,34 +74,42 @@ module.exports = async (fastify) => {
 
     if (!validateUsername(username)) {
       return reply.status(400).send({
+        success: false,
         error: 'Username: 3-30 chars (alphanumeric, underscore only)'
       });
     }
 
     if (!validateEmail(email)) {
-      return reply.status(400).send({ error: 'Invalid email format' });
+      return reply.status(400).send({ 
+        success: false,
+        error: 'Invalid email format' 
+      });
     }
 
     if (!validatePassword(password)) {
       return reply.status(400).send({
+        success: false,
         error: 'Password: 8+ chars with 1 uppercase, 1 lowercase, 1 number'
       });
     }
 
     if (!['Male', 'Female', 'Other'].includes(gender)) {
       return reply.status(400).send({
+        success: false,
         error: 'Gender must be Male, Female, or Other'
       });
     }
 
     if (!country || country.length === 0 || country.length > 100) {
       return reply.status(400).send({
+        success: false,
         error: 'Country: 1-100 characters'
       });
     }
 
     if (!city || city.length === 0 || city.length > 100) {
       return reply.status(400).send({
+        success: false,
         error: 'City: 1-100 characters'
       });
     }
@@ -112,6 +122,7 @@ module.exports = async (fastify) => {
 
       if (existing.rows.length > 0) {
         return reply.status(409).send({
+          success: false,
           error: 'Username or email already exists'
         });
       }
@@ -136,21 +147,25 @@ module.exports = async (fastify) => {
         { expiresIn: '30d' }
       );
 
-      return {
+      return reply.status(200).send({
         success: true,
         token,
         user: { id: userId, username, email }
-      };
+      });
     } catch (err) {
       console.error('Register error:', err.message);
 
       if (err.code === '23505') {
         return reply.status(409).send({
+          success: false,
           error: 'Username or email already exists'
         });
       }
 
-      return reply.status(500).send({ error: 'Registration failed' });
+      return reply.status(500).send({ 
+        success: false,
+        error: 'Registration failed' 
+      });
     }
   });
 
@@ -187,12 +202,18 @@ module.exports = async (fastify) => {
         400: {
           description: 'Missing fields',
           type: 'object',
-          properties: { error: { type: 'string' } }
+          properties: { 
+            success: { type: 'boolean' },
+            error: { type: 'string' } 
+          }
         },
         401: {
           description: 'Invalid credentials',
           type: 'object',
-          properties: { error: { type: 'string' } }
+          properties: { 
+            success: { type: 'boolean' },
+            error: { type: 'string' } 
+          }
         }
       }
     }
@@ -201,6 +222,7 @@ module.exports = async (fastify) => {
 
     if (!email || !password) {
       return reply.status(400).send({
+        success: false,
         error: 'Email and password required'
       });
     }
@@ -212,14 +234,20 @@ module.exports = async (fastify) => {
       );
 
       if (result.rows.length === 0) {
-        return reply.status(401).send({ error: 'Invalid email or password' });
+        return reply.status(401).send({ 
+          success: false,
+          error: 'Invalid email or password' 
+        });
       }
 
       const user = result.rows[0];
       const passwordValid = await argon2.verify(user.password_hash, password);
 
       if (!passwordValid) {
-        return reply.status(401).send({ error: 'Invalid email or password' });
+        return reply.status(401).send({ 
+          success: false,
+          error: 'Invalid email or password' 
+        });
       }
 
       const token = fastify.jwt.sign(
@@ -227,7 +255,7 @@ module.exports = async (fastify) => {
         { expiresIn: '30d' }
       );
 
-      return {
+      return reply.status(200).send({
         success: true,
         token,
         user: {
@@ -235,125 +263,13 @@ module.exports = async (fastify) => {
           username: user.username,
           email: user.email
         }
-      };
+      });
     } catch (err) {
       console.error('Login error:', err.message);
-      return reply.status(500).send({ error: 'Login failed' });
-    }
-  });
-
-  // GET /profile/:userId
-  fastify.get('/profile/:userId', {
-    schema: {
-      tags: ['Profile'],
-      description: 'Get user profile',
-      security: [{ bearerAuth: [] }],
-      params: {
-        type: 'object',
-        properties: {
-          userId: { type: 'string' }
-        }
-      },
-      response: {
-        200: {
-          description: 'Profile retrieved',
-          type: 'object',
-          properties: {
-            user: {
-              type: 'object',
-              properties: {
-                id: { type: 'string' },
-                username: { type: 'string' },
-                bio: { type: 'string' },
-                city: { type: 'string' },
-                country: { type: 'string' }
-              }
-            },
-            isFriend: { type: 'boolean' },
-            isOwn: { type: 'boolean' }
-          }
-        },
-        401: { type: 'object', properties: { error: { type: 'string' } } },
-        404: { type: 'object', properties: { error: { type: 'string' } } }
-      }
-    },
-    onRequest: [fastify.authenticate]
-  }, async (req, reply) => {
-    const { userId } = req.params;
-    const currentUserId = req.user.id;
-
-    try {
-      const result = await pool.query(
-        `SELECT id, username, avatar_url, city, country, bio FROM users WHERE id = $1`,
-        [userId]
-      );
-
-      if (result.rows.length === 0) {
-        return reply.status(404).send({ error: 'User not found' });
-      }
-
-      return {
-        user: result.rows[0],
-        isFriend: false,
-        isOwn: currentUserId === userId
-      };
-    } catch (err) {
-      console.error('Get profile error:', err.message);
-      return reply.status(500).send({ error: 'Failed to fetch profile' });
-    }
-  });
-
-  // PUT /profile
-  fastify.put('/profile', {
-    schema: {
-      tags: ['Profile'],
-      description: 'Update user profile',
-      security: [{ bearerAuth: [] }],
-      body: {
-        type: 'object',
-        properties: {
-          bio: { type: 'string', maxLength: 500 },
-          avatar_url: { type: 'string' },
-          interests: { type: 'string', maxLength: 200 }
-        }
-      },
-      response: {
-        200: {
-          description: 'Profile updated',
-          type: 'object',
-          properties: {
-            success: { type: 'boolean' },
-            message: { type: 'string' }
-          }
-        },
-        400: { type: 'object', properties: { error: { type: 'string' } } },
-        401: { type: 'object', properties: { error: { type: 'string' } } }
-      }
-    },
-    onRequest: [fastify.authenticate]
-  }, async (req, reply) => {
-    const userId = req.user.id;
-    const { bio, avatar_url, interests } = req.body;
-
-    if (bio && bio.length > 500) {
-      return reply.status(400).send({ error: 'Bio max 500 characters' });
-    }
-
-    try {
-      await pool.query(
-        `UPDATE users SET 
-          bio = COALESCE($1, bio),
-          avatar_url = COALESCE($2, avatar_url),
-          interests = COALESCE($3, interests),
-          updated_at = NOW()
-         WHERE id = $4`,
-        [bio || null, avatar_url || null, interests || null, userId]
-      );
-
-      return { success: true, message: 'Profile updated' };
-    } catch (err) {
-      console.error('Update profile error:', err.message);
-      return reply.status(500).send({ error: 'Update failed' });
+      return reply.status(500).send({ 
+        success: false,
+        error: 'Login failed' 
+      });
     }
   });
 };

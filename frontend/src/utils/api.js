@@ -1,14 +1,13 @@
-// IPv4 adresini 'ipconfig' ile kontrol etmeyi unutma!
-// Eğer IP değişirse burayı güncellemen gerekir.
-export const API_BASE_URL = "http://192.168.1.103:3000";
+// src/utils/api.js - FRONTEND (MOBİL) TARAFI
 
-// --- AUTH API ---
+// IPv4 adresini 'ipconfig' ile kontrol etmeyi unutma!
+export const API_BASE_URL = "http://192.168.1.110:3000";
+
+// --- AUTH API (Giriş, Kayıt, Profil Güncelleme) ---
 export const authAPI = {
-  // Kayıt olma
   register: async (username, email, password, gender, country, city) => {
     try {
-      console.log("🚀 Kayıt isteği gönderiliyor:", { username, email });
-      const res = await fetch(`${API_BASE_URL}/register`, {
+      const res = await fetch(`${API_BASE_URL}/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -20,62 +19,76 @@ export const authAPI = {
           city,
         }),
       });
-      const data = await res.json();
-      console.log("✅ Kayıt Yanıtı:", data);
-      return data;
+      return await res.json();
     } catch (error) {
-      console.error("❌ Kayıt Hatası:", error);
       return { success: false, error: "Sunucuya bağlanılamadı!" };
     }
   },
 
-  // Giriş yapma
   login: async (email, password) => {
     try {
-      console.log("🔑 Giriş isteği gönderiliyor:", email);
-      const res = await fetch(`${API_BASE_URL}/login`, {
+      const res = await fetch(`${API_BASE_URL}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
       });
-      const data = await res.json();
-      console.log("✅ Giriş Yanıtı:", data);
-      return data;
+      return await res.json();
     } catch (error) {
-      console.error("❌ Giriş Hatası:", error);
-      return { success: false, error: "Sunucuya bağlanılamadı!" };
+      return { success: false, error: "Giriş başarısız!" };
+    }
+  },
+
+  updateProfile: async (token, bio, avatar_url, interests) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/auth/profile`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ bio, avatar_url, interests }),
+      });
+      return await res.json();
+    } catch (error) {
+      return { success: false, error: "Profil güncellenemedi." };
     }
   },
 };
 
-// --- LETTER API ---
+// --- LETTER API (Keşfet ve Mektup İşlemleri) ---
 export const letterAPI = {
-  // Kullanıcı keşfet (filtreleme ile)
+  // KEŞFET: Backend'de /auth/discover olarak tanımladığımız yer
   discover: async (token, filters = {}) => {
     try {
-      let url = `${API_BASE_URL}/discover`;
+      let url = `${API_BASE_URL}/auth/discover`;
       const params = new URLSearchParams();
-      if (filters.country) params.append("country", filters.country);
-      if (filters.city) params.append("city", filters.city);
       if (filters.gender) params.append("gender", filters.gender);
+      if (filters.country) params.append("country", filters.country);
       if (filters.username) params.append("username", filters.username);
 
       const queryString = params.toString();
-      if (queryString) {
-        url += `?${queryString}`;
-      }
+      if (queryString) url += `?${queryString}`;
 
       const res = await fetch(url, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      return res.json();
+      return await res.json();
     } catch (error) {
-      console.error("Discover Hatası:", error);
       return { success: false, error: "Kullanıcılar getirilemedi." };
     }
   },
 
-  // Mektup gönder
+  getProfile: async (token, userId) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/auth/profile/${userId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      return await res.json();
+    } catch (error) {
+      return { success: false, error: "Profil bilgisi alınamadı." };
+    }
+  },
+
   sendLetter: async (token, receiverId, content) => {
     try {
       const res = await fetch(`${API_BASE_URL}/letters/send`, {
@@ -86,104 +99,23 @@ export const letterAPI = {
         },
         body: JSON.stringify({ receiverId, content }),
       });
-      return res.json();
+      return await res.json();
     } catch (error) {
-      console.error("Send Letter Hatası:", error);
       return { success: false, error: "Mektup gönderilemedi." };
     }
   },
 
-  // Inbox (alınan mektuplar)
   getInbox: async (token) => {
     const res = await fetch(`${API_BASE_URL}/letters/inbox`, {
       headers: { Authorization: `Bearer ${token}` },
     });
-    return res.json();
+    return await res.json();
   },
 
-  // Outbox (gönderilen mektuplar)
   getOutbox: async (token) => {
     const res = await fetch(`${API_BASE_URL}/letters/outbox`, {
       headers: { Authorization: `Bearer ${token}` },
     });
-    return res.json();
-  },
-
-  // Mektup oku / Okundu olarak işaretle
-  markAsRead: async (token, letterId) => {
-    const res = await fetch(`${API_BASE_URL}/letters/${letterId}/read`, {
-      method: "PUT",
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    return res.json();
-  },
-
-  // İstatistikler
-  getStatistics: async (token) => {
-    const res = await fetch(`${API_BASE_URL}/statistics`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    return res.json();
-  },
-
-  // Pul koleksiyonu
-  getStamps: async (token) => {
-    const res = await fetch(`${API_BASE_URL}/stamps`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    return res.json();
-  },
-
-  // Profil bilgisi
-  getProfile: async (token, userId) => {
-    const res = await fetch(`${API_BASE_URL}/profile/${userId}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    return res.json();
-  },
-};
-
-// --- ROOM API ---
-export const roomAPI = {
-  getRooms: async (token) => {
-    const res = await fetch(`${API_BASE_URL}/rooms`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (!res.ok) throw new Error("Failed to fetch rooms");
-    return res.json();
-  },
-
-  createRoom: async (name, token) => {
-    const res = await fetch(`${API_BASE_URL}/rooms`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ name }),
-    });
-    if (!res.ok) {
-      const error = await res.json();
-      return {
-        success: false,
-        error: error.message || "Failed to create room",
-      };
-    }
-    return { success: true };
-  },
-
-  joinRoom: async (roomId, token) => {
-    const res = await fetch(`${API_BASE_URL}/rooms/${roomId}/join`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    return res.json();
-  },
-
-  getMessages: async (roomId, token) => {
-    const headers = {};
-    if (token) headers.Authorization = `Bearer ${token}`;
-    const res = await fetch(`${API_BASE_URL}/messages/${roomId}`, { headers });
-    return res.json();
+    return await res.json();
   },
 };

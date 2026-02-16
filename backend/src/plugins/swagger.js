@@ -11,15 +11,14 @@ module.exports = fp(async (fastify) => {
         version: '1.0.0'
       },
       host: 'localhost:3000',
-      schemes: ['http'],
+      schemes: ['http', 'https'],
       consumes: ['application/json'],
       produces: ['application/json'],
       securityDefinitions: {
-        bearerAuth: {
+        Bearer: {
           type: 'apiKey',
           name: 'Authorization',
-          in: 'header',
-          description: 'Bearer token'
+          in: 'header'
         }
       }
     }

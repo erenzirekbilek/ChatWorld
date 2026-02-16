@@ -1,5 +1,3 @@
-// src/app.js
-
 const fastify = require('fastify')({
   logger: { transport: { target: 'pino-pretty' } }
 });
@@ -10,48 +8,53 @@ require('dotenv').config();
 
 // ============ PLUGINS ============
 
+// CORS ayarları: Frontend veya Swagger'ın erişebilmesi için
 fastify.register(cors, { origin: '*' });
 
+// JWT Konfigürasyonu
 fastify.register(JWTPlugin, {
-  secret: process.env.JWT_SECRET || 'test-secret'
+  secret: process.env.JWT_SECRET || 'test-secret-key-must-be-at-least-32-chars-long'
 });
 
-// Swagger MUST be registered FIRST before routes
+// Swagger kaydı (Rotalardan ÖNCE yapılmalı)
 fastify.register(require('./plugins/swagger'));
 
 // ============ AUTH DECORATOR ============
 
+// Bu fonksiyon, korumalı rotalara girilmeden önce token kontrolü yapar
 fastify.decorate('authenticate', async (req, reply) => {
   try {
-    await req.jwtVerify();
+    await req.jwtVerify(); 
+    // Başarılı olursa req.user dolar
   } catch (err) {
-    reply.status(401).send({ success: false, error: 'Unauthorized' });
+    return reply.status(401).send({ 
+      success: false, 
+      error: 'Unauthorized - Invalid or missing token' 
+    });
   }
 });
 
-// ============ ROUTES (registered AFTER swagger) ============
+// ============ ROUTES ============
 
+// 1. Korumasız Rotalar (Giriş ve Kayıt herkes için açık)
 fastify.register(require('./routes/auth'), { prefix: '/auth' });
-fastify.register(require('./routes/letters'), { prefix: '/letters' });
-fastify.register(require('./routes/friendships'), { prefix: '/friendships' });
+
+// 2. Korumalı Rotalar (her endpoint kendi authenticate'ını kontrol ediyor)
+fastify.register(require('./routes/letters'), { 
+  prefix: '/letters'
+});
+
+fastify.register(require('./routes/friendships'), { 
+  prefix: '/friendships'
+});
+
+fastify.register(require('./routes/profile'), { 
+  prefix: '/profile'
+});
 
 // ============ HEALTH CHECK ============
 
-fastify.get('/health', {
-  schema: {
-    tags: ['Health'],
-    description: 'Health check endpoint',
-    response: {
-      200: {
-        description: 'Server is healthy',
-        type: 'object',
-        properties: {
-          status: { type: 'string' }
-        }
-      }
-    }
-  }
-}, async (req, reply) => {
+fastify.get('/health', async (req, reply) => {
   return { status: 'ok' };
 });
 

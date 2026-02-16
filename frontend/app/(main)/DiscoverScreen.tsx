@@ -2,16 +2,16 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
-    Alert,
-    FlatList,
-    StyleSheet,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  FlatList,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { Text } from "react-native-paper";
+import { profileAPI } from "../../app/utils/api";
 import { useAuth } from "../../src/context/AuthContext";
-import { letterAPI } from "../../src/utils/api";
 
 const GENDERS = ["All", "Male", "Female", "Other"];
 const COUNTRIES = [
@@ -24,8 +24,19 @@ const COUNTRIES = [
   "Other",
 ];
 
+interface User {
+  id: string;
+  username: string;
+  bio?: string;
+  gender: string;
+  country: string;
+  city: string;
+  avatar_url?: string;
+  interests?: string;
+}
+
 export default function DiscoverScreen() {
-  const [users, setUsers] = useState<any[]>([]); // Tip eklendi
+  const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchUsername, setSearchUsername] = useState("");
   const [selectedGender, setSelectedGender] = useState("All");
@@ -34,45 +45,70 @@ export default function DiscoverScreen() {
   const { token } = useAuth();
   const router = useRouter();
 
+  // İlk yüklemede tüm kullanıcıları getir
   useEffect(() => {
     if (token) {
       discoverUsers();
     }
   }, [token]);
 
+  // Filtreleri değiştirince otomatik olarak ara
+  useEffect(() => {
+    if (token) {
+      discoverUsers();
+    }
+  }, [selectedGender, selectedCountry]);
+
   const discoverUsers = useCallback(async () => {
-    if (!token) return;
+    if (!token) {
+      Alert.alert("Hata", "Token bulunamadı. Lütfen giriş yapınız.");
+      return;
+    }
+
     try {
       setLoading(true);
-      const filters: any = {}; // Tip eklendi
+
+      const filters: any = {};
       if (selectedGender !== "All") filters.gender = selectedGender;
       if (selectedCountry !== "All") filters.country = selectedCountry;
       if (searchUsername.trim()) filters.username = searchUsername;
 
-      const response = await letterAPI.discover(token, filters);
-      if (response.success) {
+      console.log("🔍 Discover filters:", filters);
+      console.log("🔑 Token:", token.substring(0, 20) + "...");
+
+      const response = await profileAPI.discover(token, filters);
+
+      console.log("📡 API Response:", response);
+
+      if (response.success && response.users) {
         setUsers(response.users);
+        console.log(`✅ ${response.users.length} kullanıcı bulundu`);
+        Alert.alert("Başarılı", `${response.users.length} kullanıcı bulundu`);
       } else {
         Alert.alert("Hata", response.error || "Kullanıcılar keşfedilemedi");
+        setUsers([]);
       }
     } catch (err) {
-      console.error("Discover error:", err);
+      console.error("❌ Discover error:", err);
       Alert.alert("Hata", "Kullanıcı listesi alınırken bir hata oluştu");
+      setUsers([]);
     } finally {
       setLoading(false);
     }
   }, [token, selectedGender, selectedCountry, searchUsername]);
 
-  // ÇÖZÜM: Parametrelere açıkça tip (string) veya 'any' verildi
-  const handleSendLetter = (receiverId: any, receiverUsername: any) => {
+  const handleSendLetter = (receiverId: string, receiverUsername: string) => {
     router.push({
-      pathname: "/SendLetterModal" as any,
+      pathname: "/SendLetterModal",
       params: { receiverId, receiverUsername },
     });
   };
 
-  // ÇÖZÜM: 'item' için tip belirlemesi yapıldı
-  const renderUserCard = ({ item }: { item: any }) => {
+  const handleSearch = () => {
+    discoverUsers();
+  };
+
+  const renderUserCard = ({ item }: { item: User }) => {
     return (
       <View style={styles.userCard}>
         {/* Avatar Bölümü */}
@@ -89,12 +125,14 @@ export default function DiscoverScreen() {
         {/* Kullanıcı Bilgileri */}
         <View style={styles.userInfo}>
           <Text style={styles.username}>{item.username}</Text>
+
           <View style={styles.locationRow}>
             <Ionicons name="location" size={14} color="#4f46e5" />
             <Text style={styles.location}>
               {item.city}, {item.country}
             </Text>
           </View>
+
           <View style={styles.genderRow}>
             <Ionicons
               name={
@@ -142,7 +180,7 @@ export default function DiscoverScreen() {
       {/* Üst Başlık */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Keşfet</Text>
-        <TouchableOpacity onPress={() => router.push("/ProfileScreen" as any)}>
+        <TouchableOpacity onPress={() => router.push("/ProfileScreen")}>
           <Ionicons name="person-circle" size={32} color="#4f46e5" />
         </TouchableOpacity>
       </View>
@@ -157,7 +195,7 @@ export default function DiscoverScreen() {
           value={searchUsername}
           onChangeText={setSearchUsername}
         />
-        <TouchableOpacity onPress={discoverUsers}>
+        <TouchableOpacity onPress={handleSearch}>
           <Ionicons name="checkmark-circle" size={24} color="#4f46e5" />
         </TouchableOpacity>
       </View>
@@ -218,7 +256,7 @@ export default function DiscoverScreen() {
       {/* Kullanıcı Listesi */}
       <FlatList
         data={users}
-        keyExtractor={(item) => item.id.toString()}
+        keyExtractor={(item) => item.id}
         renderItem={renderUserCard}
         onRefresh={discoverUsers}
         refreshing={loading}

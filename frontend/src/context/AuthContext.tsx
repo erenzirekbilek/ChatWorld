@@ -1,7 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { jwtDecode } from "jwt-decode";
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { authAPI } from "../utils/api";
+import { authAPI } from "../../app/utils/api";
 
 // Tipler
 export interface User {
@@ -11,6 +11,9 @@ export interface User {
   gender?: string;
   country?: string;
   city?: string;
+  bio?: string;
+  avatar_url?: string;
+  interests?: string;
 }
 
 interface DecodedToken {
@@ -20,6 +23,9 @@ interface DecodedToken {
   gender?: string;
   country?: string;
   city?: string;
+  bio?: string;
+  avatar_url?: string;
+  interests?: string;
   exp: number;
 }
 
@@ -77,6 +83,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
             gender: decoded.gender,
             country: decoded.country,
             city: decoded.city,
+            bio: decoded.bio,
+            avatar_url: decoded.avatar_url,
+            interests: decoded.interests,
           });
         }
       }
@@ -104,6 +113,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         gender: decoded.gender,
         country: decoded.country,
         city: decoded.city,
+        bio: decoded.bio,
+        avatar_url: decoded.avatar_url,
+        interests: decoded.interests,
       };
 
       setToken(data.token);
@@ -148,6 +160,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         gender: decoded.gender,
         country: decoded.country,
         city: decoded.city,
+        bio: decoded.bio,
+        avatar_url: decoded.avatar_url,
+        interests: decoded.interests,
       };
 
       setToken(data.token);

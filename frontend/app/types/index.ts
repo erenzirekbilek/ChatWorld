@@ -1,17 +1,4 @@
-export interface Room {
-  id: string;
-  name: string;
-  created_by: string;
-  created_by_username: string;
-  created_at: string;
-}
-
-export interface Message {
-  id: string;
-  username: string;
-  content: string;
-  timestamp: string;
-}
+// app/types/index.ts
 
 export interface User {
   id: string;
@@ -25,7 +12,6 @@ export interface User {
   interests?: string;
 }
 
-// YENİ: Letter
 export interface Letter {
   id: string;
   sender_id?: string;
@@ -40,17 +26,32 @@ export interface Letter {
   avatar_url?: string;
 }
 
-// YENİ: Stamp
 export interface Stamp {
-  stamp_type: string;
+  stamp_type: "vintage" | "modern" | "rare" | "classic";
   count: number;
 }
 
-// YENİ: Statistics
 export interface Statistics {
   sent_count: number;
   received_count: number;
   read_count: number;
   friends_count: number;
   total_stamps: number;
+}
+
+export interface Friend {
+  friend_id: string;
+  username: string;
+  avatar_url?: string;
+  city: string;
+  country: string;
+  bio?: string;
+}
+
+export interface Friendship {
+  id: string;
+  user_id_1: string;
+  user_id_2: string;
+  status: "pending" | "accepted" | "rejected";
+  created_at: string;
 }
