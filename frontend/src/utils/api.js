@@ -1,7 +1,7 @@
 // src/utils/api.js - FRONTEND (MOBİL) TARAFI
 
 // IPv4 adresini 'ipconfig' ile kontrol etmeyi unutma!
-export const API_BASE_URL = "http://192.168.1.110:3000";
+export const API_BASE_URL = "http://192.168.152.67:3000";
 
 // --- AUTH API (Giriş, Kayıt, Profil Güncelleme) ---
 export const authAPI = {

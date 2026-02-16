@@ -1,21 +1,30 @@
-// app/(main)/FriendsScreen.tsx
-
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
 import React, { useCallback, useState } from "react";
 import {
-    Alert,
-    FlatList,
-    RefreshControl,
-    StyleSheet,
-    TouchableOpacity,
-    View,
+  Alert,
+  FlatList,
+  RefreshControl,
+  StatusBar,
+  StyleSheet,
+  TouchableOpacity,
+  View,
 } from "react-native";
-import { Text } from "react-native-paper";
+import { Avatar, Text } from "react-native-paper";
 import { Friend } from "../../app/types";
 import { friendshipAPI } from "../../app/utils/api";
 import { useAuth } from "../../src/context/AuthContext";
+
+const COLORS = {
+  primary: "#007AFF",
+  bg: "#F8F9FC",
+  white: "#FFFFFF",
+  text: "#1C1C1E",
+  gray: "#8E8E93",
+  accent: "#E5F1FF",
+  border: "#F2F2F7",
+};
 
 export default function FriendsScreen() {
   const [friends, setFriends] = useState<Friend[]>([]);
@@ -33,15 +42,13 @@ export default function FriendsScreen() {
 
   const fetchFriends = async () => {
     if (!token) return;
-
     try {
       setRefreshing(true);
       const response = await friendshipAPI.getFriends(token);
-
       if (response.success) {
         setFriends(response.friends || []);
       } else {
-        Alert.alert("Error", response.error || "Failed to fetch friends");
+        Alert.alert("Hata", response.error || "Arkadaşlar yüklenemedi");
       }
     } catch (err) {
       console.error("Fetch friends error:", err);
@@ -65,18 +72,17 @@ export default function FriendsScreen() {
 
   const renderFriend = ({ item }: { item: Friend }) => (
     <View style={styles.friendCard}>
-      {/* Avatar */}
-      <View style={styles.avatarContainer}>
-        <Text style={styles.avatarText}>
-          {item.username.charAt(0).toUpperCase()}
-        </Text>
-      </View>
+      <Avatar.Text
+        size={50}
+        label={item.username.charAt(0).toUpperCase()}
+        style={styles.avatarStyle}
+        labelStyle={{ color: COLORS.primary, fontWeight: "700" }}
+      />
 
-      {/* Info */}
       <View style={styles.friendInfo}>
         <Text style={styles.friendName}>{item.username}</Text>
         <View style={styles.locationRow}>
-          <Ionicons name="location" size={12} color="#4f46e5" />
+          <Ionicons name="location-outline" size={12} color={COLORS.gray} />
           <Text style={styles.location}>
             {item.city}, {item.country}
           </Text>
@@ -88,26 +94,38 @@ export default function FriendsScreen() {
         )}
       </View>
 
-      {/* Send Letter Button */}
       <TouchableOpacity
         style={styles.sendBtn}
         onPress={() => handleSendLetter(item.friend_id, item.username)}
+        activeOpacity={0.7}
       >
-        <Ionicons name="send" size={18} color="#fff" />
+        <Ionicons name="mail-outline" size={20} color={COLORS.white} />
       </TouchableOpacity>
     </View>
   );
 
   return (
     <View style={styles.container}>
+      <StatusBar barStyle="dark-content" />
+
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color="#4f46e5" />
+        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <Ionicons name="chevron-back" size={24} color={COLORS.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Friends ({friends.length})</Text>
-        <TouchableOpacity onPress={() => router.push("../ProfileScreen")}>
-          <Ionicons name="person-circle" size={32} color="#4f46e5" />
+        <View style={styles.headerTitleContainer}>
+          <Text style={styles.headerTitle}>Arkadaşlarım</Text>
+          <Text style={styles.headerSubText}>{friends.length} Kişi</Text>
+        </View>
+        <TouchableOpacity
+          style={styles.profileBtn}
+          onPress={() => router.push("/(main)/ProfileScreen")}
+        >
+          <Ionicons
+            name="person-circle-outline"
+            size={28}
+            color={COLORS.text}
+          />
         </TouchableOpacity>
       </View>
 
@@ -116,29 +134,36 @@ export default function FriendsScreen() {
         data={friends}
         keyExtractor={(item) => item.friend_id}
         renderItem={renderFriend}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.listContent}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor="#4f46e5"
+            tintColor={COLORS.primary}
           />
         }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Ionicons name="people" size={48} color="#4f46e5" />
-            <Text style={styles.emptyText}>No friends yet</Text>
+            <View style={styles.emptyIconCircle}>
+              <Ionicons
+                name="people-outline"
+                size={40}
+                color={COLORS.primary}
+              />
+            </View>
+            <Text style={styles.emptyText}>Henüz dostun yok</Text>
             <Text style={styles.emptySubtext}>
-              Discover users and send friend requests!
+              Dünyanın her yerinden insanlarla tanışmak için keşfetmeye başla.
             </Text>
             <TouchableOpacity
               style={styles.discoverButton}
               onPress={() => router.push("/(main)/DiscoverScreen")}
             >
-              <Text style={styles.discoverButtonText}>Find Friends</Text>
+              <Text style={styles.discoverButtonText}>Arkadaş Bul</Text>
             </TouchableOpacity>
           </View>
         }
-        contentContainerStyle={styles.listContent}
       />
     </View>
   );
@@ -147,60 +172,82 @@ export default function FriendsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#0f0f1e",
+    backgroundColor: COLORS.bg,
   },
   header: {
-    backgroundColor: "#16213e",
+    backgroundColor: COLORS.white,
     paddingHorizontal: 20,
-    paddingTop: 50,
+    paddingTop: 60,
     paddingBottom: 20,
     flexDirection: "row",
+    alignItems: "center",
     justifyContent: "space-between",
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
+    elevation: 3,
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+  },
+  backBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: COLORS.bg,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  headerTitleContainer: {
     alignItems: "center",
   },
   headerTitle: {
-    fontSize: 22,
-    fontWeight: "bold",
-    color: "#fff",
+    fontSize: 20,
+    fontWeight: "800",
+    color: COLORS.text,
+  },
+  headerSubText: {
+    fontSize: 12,
+    color: COLORS.gray,
+    fontWeight: "600",
+  },
+  profileBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: COLORS.bg,
+    justifyContent: "center",
+    alignItems: "center",
   },
 
   // Friend Card
   listContent: {
-    paddingHorizontal: 15,
-    paddingVertical: 10,
+    padding: 20,
+    paddingBottom: 40,
   },
   friendCard: {
-    backgroundColor: "#1a1a2e",
-    marginVertical: 8,
-    borderRadius: 12,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: "#374151",
+    backgroundColor: COLORS.white,
+    marginBottom: 15,
+    borderRadius: 20,
+    padding: 15,
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
   },
-  avatarContainer: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: "#4f46e5",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  avatarText: {
-    color: "#fff",
-    fontSize: 20,
-    fontWeight: "bold",
+  avatarStyle: {
+    backgroundColor: COLORS.accent,
   },
   friendInfo: {
     flex: 1,
+    marginLeft: 15,
   },
   friendName: {
-    color: "#fff",
-    fontSize: 14,
-    fontWeight: "600",
-    marginBottom: 4,
+    color: COLORS.text,
+    fontSize: 16,
+    fontWeight: "700",
+    marginBottom: 2,
   },
   locationRow: {
     flexDirection: "row",
@@ -209,21 +256,26 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   location: {
-    color: "#9ca3af",
-    fontSize: 11,
+    color: COLORS.gray,
+    fontSize: 12,
   },
   bio: {
-    color: "#cbd5e1",
-    fontSize: 11,
+    color: COLORS.gray,
+    fontSize: 12,
     fontStyle: "italic",
+    opacity: 0.8,
   },
   sendBtn: {
-    backgroundColor: "#4f46e5",
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    backgroundColor: COLORS.primary,
+    width: 44,
+    height: 44,
+    borderRadius: 15,
     justifyContent: "center",
     alignItems: "center",
+    shadowColor: COLORS.primary,
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 3,
   },
 
   // Empty State
@@ -231,29 +283,45 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    paddingVertical: 100,
+    marginTop: 100,
+    paddingHorizontal: 40,
+  },
+  emptyIconCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 30,
+    backgroundColor: COLORS.white,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 20,
+    elevation: 2,
   },
   emptyText: {
-    color: "#9ca3af",
-    fontSize: 18,
-    fontWeight: "600",
-    marginTop: 12,
+    color: COLORS.text,
+    fontSize: 20,
+    fontWeight: "800",
+    marginBottom: 10,
   },
   emptySubtext: {
-    color: "#6b7280",
-    fontSize: 13,
-    marginTop: 6,
-    marginBottom: 20,
+    color: COLORS.gray,
+    fontSize: 14,
+    textAlign: "center",
+    lineHeight: 20,
+    marginBottom: 25,
   },
   discoverButton: {
-    backgroundColor: "#4f46e5",
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 8,
-    marginTop: 10,
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 30,
+    paddingVertical: 15,
+    borderRadius: 20,
+    shadowColor: COLORS.primary,
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    elevation: 5,
   },
   discoverButtonText: {
-    color: "#fff",
-    fontWeight: "600",
+    color: COLORS.white,
+    fontWeight: "700",
+    fontSize: 16,
   },
 });
