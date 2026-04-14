@@ -15,7 +15,7 @@ module.exports = {
     if (!value || !REGEX.UUID.test(value)) {
       return {
         valid: false,
-        error: `Invalid ${fieldName} format`
+        error: `Invalid ${fieldName} format`,
       };
     }
     return { valid: true };
@@ -25,7 +25,7 @@ module.exports = {
     if (!value || !REGEX.EMAIL.test(value)) {
       return {
         valid: false,
-        error: 'Invalid email format'
+        error: 'Invalid email format',
       };
     }
     return { valid: true };
@@ -35,7 +35,7 @@ module.exports = {
     if (!value || !REGEX.USERNAME.test(value)) {
       return {
         valid: false,
-        error: 'Username must be 3-50 characters, alphanumeric and underscore only'
+        error: 'Username must be 3-50 characters, alphanumeric and underscore only',
       };
     }
     return { valid: true };
@@ -45,7 +45,7 @@ module.exports = {
     if (!value || !REGEX.PASSWORD.test(value)) {
       return {
         valid: false,
-        error: 'Password must be at least 8 characters with letters and numbers'
+        error: 'Password must be at least 8 characters with letters and numbers',
       };
     }
     return { valid: true };
@@ -55,7 +55,7 @@ module.exports = {
     if (value && value.length > maxLength) {
       return {
         valid: false,
-        error: `Bio must be less than ${maxLength} characters`
+        error: `Bio must be less than ${maxLength} characters`,
       };
     }
     return { valid: true };
@@ -65,7 +65,7 @@ module.exports = {
     if (!value || value.length < 2 || value.length > 100) {
       return {
         valid: false,
-        error: 'Country must be between 2-100 characters'
+        error: 'Country must be between 2-100 characters',
       };
     }
     return { valid: true };
@@ -75,7 +75,7 @@ module.exports = {
     if (!value || value.length < 2 || value.length > 100) {
       return {
         valid: false,
-        error: 'City must be between 2-100 characters'
+        error: 'City must be between 2-100 characters',
       };
     }
     return { valid: true };
@@ -86,7 +86,7 @@ module.exports = {
     if (!value || !validGenders.includes(value)) {
       return {
         valid: false,
-        error: `Gender must be one of: ${validGenders.join(', ')}`
+        error: `Gender must be one of: ${validGenders.join(', ')}`,
       };
     }
     return { valid: true };
@@ -96,7 +96,7 @@ module.exports = {
     if (!value || value.length < minLength || value.length > maxLength) {
       return {
         valid: false,
-        error: `Content must be between ${minLength}-${maxLength} characters`
+        error: `Content must be between ${minLength}-${maxLength} characters`,
       };
     }
     return { valid: true };
@@ -106,9 +106,9 @@ module.exports = {
     if (value && !REGEX.URL.test(value)) {
       return {
         valid: false,
-        error: 'Avatar URL must be a valid HTTP/HTTPS URL'
+        error: 'Avatar URL must be a valid HTTP/HTTPS URL',
       };
     }
     return { valid: true };
-  }
+  },
 };

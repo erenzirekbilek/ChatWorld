@@ -26,7 +26,7 @@ class AppError extends Error {
       code: this.code,
       statusCode: this.statusCode,
       timestamp: this.timestamp,
-      ...(process.env.NODE_ENV === 'development' && { stack: this.stack })
+      ...(process.env.NODE_ENV === 'development' && { stack: this.stack }),
     };
   }
 }
@@ -126,7 +126,7 @@ const asyncHandler = (fn) => {
         name: err.name,
         message: err.message,
         stack: err.stack,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
 
       // Convert to InternalError
@@ -148,7 +148,7 @@ const setupErrorHandler = (fastify) => {
       statusCode: err.statusCode || 500,
       error: err.message,
       code: err.code || 'UNKNOWN',
-      userId: request.user?.id || 'anonymous'
+      userId: request.user?.id || 'anonymous',
     };
 
     if (process.env.NODE_ENV === 'development') {
@@ -171,7 +171,7 @@ const setupErrorHandler = (fastify) => {
         error: 'Resource already exists',
         code: 'DUPLICATE_ENTRY',
         statusCode: 409,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
     }
 
@@ -182,7 +182,7 @@ const setupErrorHandler = (fastify) => {
         error: 'Invalid reference to related resource',
         code: 'INVALID_REFERENCE',
         statusCode: 400,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
     }
 
@@ -193,7 +193,7 @@ const setupErrorHandler = (fastify) => {
         error: 'Database service temporarily unavailable',
         code: 'DB_UNAVAILABLE',
         statusCode: 503,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
     }
 
@@ -204,7 +204,7 @@ const setupErrorHandler = (fastify) => {
       code: 'INTERNAL_ERROR',
       statusCode: 500,
       timestamp: new Date().toISOString(),
-      ...(process.env.NODE_ENV === 'development' && { message: err.message })
+      ...(process.env.NODE_ENV === 'development' && { message: err.message }),
     });
   });
 };
@@ -223,5 +223,5 @@ module.exports = {
 
   // Utilities
   asyncHandler,
-  setupErrorHandler
+  setupErrorHandler,
 };

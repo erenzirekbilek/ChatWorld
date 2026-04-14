@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: chatworld-db
+    environment:
+      POSTGRES_USER: chatworld
+      POSTGRES_PASSWORD: chatworld
+      POSTGRES_DB: chatworld
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U chatworld"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: chatworld-api
+    environment:
+      DATABASE_URL: postgresql://chatworld:chatworld@postgres:5432/chatworld
+      JWT_SECRET: ${JWT_SECRET:-chatworld-secret-key-minimum-32-characters-long}
+      PORT: 3000
+      NODE_ENV: development
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:

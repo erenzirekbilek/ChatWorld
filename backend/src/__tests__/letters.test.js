@@ -2,10 +2,9 @@ const fastify = require('../app');
 const { initDB, pool } = require('../db');
 
 describe('✉️ LETTERS API', () => {
-
   let token1;
   let token2;
-  let userId1;
+  let _userId1;
   let userId2;
   let letterId;
 
@@ -22,8 +21,8 @@ describe('✉️ LETTERS API', () => {
         password: 'TestPass123',
         gender: 'Male',
         country: 'Turkey',
-        city: 'Istanbul'
-      }
+        city: 'Istanbul',
+      },
     });
 
     expect(res1.statusCode).toBe(200);
@@ -41,8 +40,8 @@ describe('✉️ LETTERS API', () => {
         password: 'TestPass123',
         gender: 'Female',
         country: 'Germany',
-        city: 'Berlin'
-      }
+        city: 'Berlin',
+      },
     });
 
     expect(res2.statusCode).toBe(200);
@@ -56,12 +55,12 @@ describe('✉️ LETTERS API', () => {
       method: 'POST',
       url: '/letters/send',
       headers: {
-        authorization: `Bearer ${token1}`
+        authorization: `Bearer ${token1}`,
       },
       payload: {
         receiverId: userId2,
-        content: 'Hello test letter'
-      }
+        content: 'Hello test letter',
+      },
     });
 
     expect(res.statusCode).toBe(201);
@@ -78,8 +77,8 @@ describe('✉️ LETTERS API', () => {
       method: 'GET',
       url: '/letters/inbox',
       headers: {
-        authorization: `Bearer ${token2}`
-      }
+        authorization: `Bearer ${token2}`,
+      },
     });
 
     expect(res.statusCode).toBe(200);
@@ -95,8 +94,8 @@ describe('✉️ LETTERS API', () => {
       method: 'PUT',
       url: `/letters/${letterId}/read`,
       headers: {
-        authorization: `Bearer ${token2}`
-      }
+        authorization: `Bearer ${token2}`,
+      },
     });
 
     expect(res.statusCode).toBe(200);
@@ -110,7 +109,7 @@ describe('✉️ LETTERS API', () => {
       await fastify.close();
       await pool.end();
     } catch (err) {
-      console.error("Cleanup error:", err);
+      console.error('Cleanup error:', err);
     }
   });
 });

@@ -23,19 +23,23 @@ module.exports = async (fastify) => {
     keyGenerator: (request) => {
       // Rate limit by IP (veya user ID if authenticated)
       return request.user?.id || request.ip;
-    }
+    },
   });
 
   // Stricter rate limits for auth endpoints
-  await fastify.register(rateLimit, {
-    max: 5, // 5 attempts
-    timeWindow: '15 minutes',
-    errorResponseBuilder: () => ({
-      statusCode: 429,
-      error: 'Too Many Requests',
-      message: 'You have exceeded the rate limit. Please try again later.'
-    })
-  }, { prefix: '/auth' });
+  await fastify.register(
+    rateLimit,
+    {
+      max: 5, // 5 attempts
+      timeWindow: '15 minutes',
+      errorResponseBuilder: () => ({
+        statusCode: 429,
+        error: 'Too Many Requests',
+        message: 'You have exceeded the rate limit. Please try again later.',
+      }),
+    },
+    { prefix: '/auth' }
+  );
 
   // ===================================
   // Security Headers (Helmet)
@@ -47,9 +51,9 @@ module.exports = async (fastify) => {
         defaultSrc: ["'self'"],
         styleSrc: ["'self'", "'unsafe-inline'"],
         scriptSrc: ["'self'"],
-        imgSrc: ["'self'", 'data:', 'https:']
-      }
-    }
+        imgSrc: ["'self'", 'data:', 'https:'],
+      },
+    },
   });
 
   // ===================================
@@ -58,13 +62,13 @@ module.exports = async (fastify) => {
   fastify.addHook('onSend', async (request, reply) => {
     // Prevent MIME type sniffing
     reply.header('X-Content-Type-Options', 'nosniff');
-    
+
     // Enable XSS protection
     reply.header('X-XSS-Protection', '1; mode=block');
-    
+
     // Prevent clickjacking
     reply.header('X-Frame-Options', 'DENY');
-    
+
     // Referrer Policy
     reply.header('Referrer-Policy', 'strict-origin-when-cross-origin');
   });

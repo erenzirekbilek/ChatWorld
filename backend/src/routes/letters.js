@@ -1,60 +1,60 @@
-const { pool } = require("../db");
-const { v4: uuid } = require("uuid");
+const { pool } = require('../db');
+const { v4: uuid } = require('uuid');
 
 module.exports = async function (fastify) {
   // SEND LETTER
   fastify.post(
-    "/send",
+    '/send',
     {
       onRequest: [fastify.authenticate],
       schema: {
-        tags: ["Letters"],
-        description: "Send a letter to another user",
+        tags: ['Letters'],
+        description: 'Send a letter to another user',
         security: [{ Bearer: [] }],
         body: {
-          type: "object",
-          required: ["receiverId", "content"],
+          type: 'object',
+          required: ['receiverId', 'content'],
           properties: {
-            receiverId: { type: "string", description: "User ID of recipient" },
-            content: { type: "string", description: "Letter content" }
-          }
+            receiverId: { type: 'string', description: 'User ID of recipient' },
+            content: { type: 'string', description: 'Letter content' },
+          },
         },
         response: {
           201: {
-            description: "Letter sent successfully",
-            type: "object",
+            description: 'Letter sent successfully',
+            type: 'object',
             properties: {
-              success: { type: "boolean" },
+              success: { type: 'boolean' },
               letter: {
-                type: "object",
+                type: 'object',
                 properties: {
-                  id: { type: "string" },
-                  sender_id: { type: "string" },
-                  receiver_id: { type: "string" },
-                  content: { type: "string" },
-                  read: { type: "boolean" }
-                }
-              }
-            }
+                  id: { type: 'string' },
+                  sender_id: { type: 'string' },
+                  receiver_id: { type: 'string' },
+                  content: { type: 'string' },
+                  read: { type: 'boolean' },
+                },
+              },
+            },
           },
           400: {
-            description: "Bad request",
-            type: "object",
+            description: 'Bad request',
+            type: 'object',
             properties: {
-              success: { type: "boolean" },
-              error: { type: "string" }
-            }
+              success: { type: 'boolean' },
+              error: { type: 'string' },
+            },
           },
           401: {
-            description: "Unauthorized - Invalid or missing token",
-            type: "object",
+            description: 'Unauthorized - Invalid or missing token',
+            type: 'object',
             properties: {
-              success: { type: "boolean" },
-              error: { type: "string" }
-            }
-          }
-        }
-      }
+              success: { type: 'boolean' },
+              error: { type: 'string' },
+            },
+          },
+        },
+      },
     },
     async (req, reply) => {
       const senderId = req.user.id; // From auth
@@ -63,7 +63,7 @@ module.exports = async function (fastify) {
       if (!receiverId || !content) {
         return reply.code(400).send({
           success: false,
-          error: "Missing fields: receiverId and content required",
+          error: 'Missing fields: receiverId and content required',
         });
       }
 
@@ -89,10 +89,10 @@ module.exports = async function (fastify) {
           },
         });
       } catch (err) {
-        console.error("Send letter error:", err.message);
+        console.error('Send letter error:', err.message);
         return reply.code(500).send({
           success: false,
-          error: "Failed to send letter",
+          error: 'Failed to send letter',
         });
       }
     }
@@ -100,45 +100,45 @@ module.exports = async function (fastify) {
 
   // GET INBOX
   fastify.get(
-    "/inbox",
+    '/inbox',
     {
       onRequest: [fastify.authenticate],
       schema: {
-        tags: ["Letters"],
+        tags: ['Letters'],
         description: "Get all letters in user's inbox",
         security: [{ Bearer: [] }],
         response: {
           200: {
-            description: "Letters retrieved successfully",
-            type: "object",
+            description: 'Letters retrieved successfully',
+            type: 'object',
             properties: {
-              success: { type: "boolean" },
+              success: { type: 'boolean' },
               letters: {
-                type: "array",
+                type: 'array',
                 items: {
-                  type: "object",
+                  type: 'object',
                   properties: {
-                    id: { type: "string" },
-                    sender_id: { type: "string" },
-                    receiver_id: { type: "string" },
-                    content: { type: "string" },
-                    read: { type: "boolean" },
-                    created_at: { type: "string" }
-                  }
-                }
-              }
-            }
+                    id: { type: 'string' },
+                    sender_id: { type: 'string' },
+                    receiver_id: { type: 'string' },
+                    content: { type: 'string' },
+                    read: { type: 'boolean' },
+                    created_at: { type: 'string' },
+                  },
+                },
+              },
+            },
           },
           401: {
-            description: "Unauthorized - Invalid or missing token",
-            type: "object",
+            description: 'Unauthorized - Invalid or missing token',
+            type: 'object',
             properties: {
-              success: { type: "boolean" },
-              error: { type: "string" }
-            }
-          }
-        }
-      }
+              success: { type: 'boolean' },
+              error: { type: 'string' },
+            },
+          },
+        },
+      },
     },
     async (req, reply) => {
       const userId = req.user.id;
@@ -159,10 +159,10 @@ module.exports = async function (fastify) {
           letters: result.rows,
         });
       } catch (err) {
-        console.error("Get inbox error:", err.message);
+        console.error('Get inbox error:', err.message);
         return reply.code(500).send({
           success: false,
-          error: "Failed to fetch inbox",
+          error: 'Failed to fetch inbox',
         });
       }
     }
@@ -170,39 +170,39 @@ module.exports = async function (fastify) {
 
   // MARK AS READ
   fastify.put(
-    "/:letterId/read",
+    '/:letterId/read',
     {
       onRequest: [fastify.authenticate],
       schema: {
-        tags: ["Letters"],
-        description: "Mark a letter as read",
+        tags: ['Letters'],
+        description: 'Mark a letter as read',
         security: [{ Bearer: [] }],
         params: {
-          type: "object",
-          required: ["letterId"],
+          type: 'object',
+          required: ['letterId'],
           properties: {
-            letterId: { type: "string", description: "Letter ID" }
-          }
+            letterId: { type: 'string', description: 'Letter ID' },
+          },
         },
         response: {
           200: {
-            description: "Letter marked as read",
-            type: "object",
+            description: 'Letter marked as read',
+            type: 'object',
             properties: {
-              success: { type: "boolean" },
-              message: { type: "string" }
-            }
+              success: { type: 'boolean' },
+              message: { type: 'string' },
+            },
           },
           401: {
-            description: "Unauthorized - Invalid or missing token",
-            type: "object",
+            description: 'Unauthorized - Invalid or missing token',
+            type: 'object',
             properties: {
-              success: { type: "boolean" },
-              error: { type: "string" }
-            }
-          }
-        }
-      }
+              success: { type: 'boolean' },
+              error: { type: 'string' },
+            },
+          },
+        },
+      },
     },
     async (req, reply) => {
       const { letterId } = req.params;
@@ -219,13 +219,13 @@ module.exports = async function (fastify) {
 
         return reply.code(200).send({
           success: true,
-          message: "Letter marked as read",
+          message: 'Letter marked as read',
         });
       } catch (err) {
-        console.error("Mark as read error:", err.message);
+        console.error('Mark as read error:', err.message);
         return reply.code(500).send({
           success: false,
-          error: "Failed to update letter",
+          error: 'Failed to update letter',
         });
       }
     }

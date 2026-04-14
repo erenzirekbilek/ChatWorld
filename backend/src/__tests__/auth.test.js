@@ -6,7 +6,6 @@ let userId;
 const uniqueSeed = Date.now();
 
 describe('🔐 AUTH ENDPOINTS', () => {
-  
   beforeAll(async () => {
     await initDB();
   });
@@ -16,7 +15,7 @@ describe('🔐 AUTH ENDPOINTS', () => {
       await fastify.close();
       await pool.end();
     } catch (err) {
-      console.error("Cleanup error:", err);
+      console.error('Cleanup error:', err);
     }
   });
 
@@ -30,12 +29,12 @@ describe('🔐 AUTH ENDPOINTS', () => {
         password: 'TestPass123',
         gender: 'Male',
         country: 'Turkey',
-        city: 'Istanbul'
-      }
+        city: 'Istanbul',
+      },
     });
 
     expect(response.statusCode).toBe(200);
-    
+
     const body = JSON.parse(response.payload);
     expect(body.success).toBe(true);
     expect(body.token).toBeDefined();
@@ -51,12 +50,12 @@ describe('🔐 AUTH ENDPOINTS', () => {
       url: '/auth/login',
       payload: {
         email: `test_${uniqueSeed}@example.com`,
-        password: 'TestPass123'
-      }
+        password: 'TestPass123',
+      },
     });
 
     expect(response.statusCode).toBe(200);
-    
+
     const body = JSON.parse(response.payload);
     expect(body.token).toBeDefined();
     expect(body.success).toBe(true);
@@ -67,8 +66,8 @@ describe('🔐 AUTH ENDPOINTS', () => {
       method: 'GET',
       url: `/auth/profile/${userId}`,
       headers: {
-        authorization: `Bearer ${token}`
-      }
+        authorization: `Bearer ${token}`,
+      },
     });
 
     expect(response.statusCode).toBe(200);
@@ -79,7 +78,7 @@ describe('🔐 AUTH ENDPOINTS', () => {
   test('GET /auth/profile/:userId - Not authenticated', async () => {
     const response = await fastify.inject({
       method: 'GET',
-      url: `/auth/profile/${userId}`
+      url: `/auth/profile/${userId}`,
     });
 
     // Should return 200 but without sensitive data, or 401

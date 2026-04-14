@@ -20,8 +20,8 @@ describe('👥 FRIENDSHIPS API', () => {
           password: 'TestPass123',
           gender: 'Male',
           country: 'Turkey',
-          city: 'Istanbul'
-        }
+          city: 'Istanbul',
+        },
       });
 
       expect(res.statusCode).toBe(200);
@@ -57,7 +57,7 @@ describe('👥 FRIENDSHIPS API', () => {
       method: 'POST',
       url: '/friendships/request',
       headers: { authorization: `Bearer ${token1}` },
-      payload: { userId2 }
+      payload: { userId2 },
     });
 
     expect(res.statusCode).toBe(201);
@@ -79,7 +79,7 @@ describe('👥 FRIENDSHIPS API', () => {
       method: 'POST',
       url: '/friendships/request',
       headers: { authorization: `Bearer ${token1}` },
-      payload: { userId2: userId1 }
+      payload: { userId2: userId1 },
     });
 
     expect(res.statusCode).toBe(400);
@@ -92,7 +92,7 @@ describe('👥 FRIENDSHIPS API', () => {
       method: 'POST',
       url: '/friendships/request',
       headers: { authorization: `Bearer ${token1}` },
-      payload: { userId2: 'invalid-uuid' }
+      payload: { userId2: 'invalid-uuid' },
     });
 
     expect(res.statusCode).toBe(400);
@@ -105,7 +105,7 @@ describe('👥 FRIENDSHIPS API', () => {
       method: 'POST',
       url: '/friendships/request',
       headers: { authorization: `Bearer ${token1}` },
-      payload: { userId2: '00000000-0000-0000-0000-000000000000' }
+      payload: { userId2: '00000000-0000-0000-0000-000000000000' },
     });
 
     expect(res.statusCode).toBe(404);
@@ -120,7 +120,7 @@ describe('👥 FRIENDSHIPS API', () => {
     const res = await fastify.inject({
       method: 'PUT',
       url: `/friendships/${friendshipId}/accept`,
-      headers: { authorization: `Bearer ${token2}` }
+      headers: { authorization: `Bearer ${token2}` },
     });
 
     expect(res.statusCode).toBe(200);
@@ -133,7 +133,7 @@ describe('👥 FRIENDSHIPS API', () => {
     const res = await fastify.inject({
       method: 'PUT',
       url: `/friendships/${friendshipId}/accept`,
-      headers: { authorization: `Bearer ${token2}` }
+      headers: { authorization: `Bearer ${token2}` },
     });
 
     expect(res.statusCode).toBe(400);
@@ -146,7 +146,7 @@ describe('👥 FRIENDSHIPS API', () => {
     const res = await fastify.inject({
       method: 'GET',
       url: '/friendships',
-      headers: { authorization: `Bearer ${token1}` }
+      headers: { authorization: `Bearer ${token1}` },
     });
 
     expect(res.statusCode).toBe(200);
@@ -165,13 +165,13 @@ describe('👥 FRIENDSHIPS API', () => {
       method: 'POST',
       url: '/friendships/request',
       headers: { authorization: `Bearer ${token1}` },
-      payload: { userId2: userId3 }
+      payload: { userId2: userId3 },
     });
 
     const res = await fastify.inject({
       method: 'GET',
       url: '/friendships/pending',
-      headers: { authorization: `Bearer ${token3}` }
+      headers: { authorization: `Bearer ${token3}` },
     });
 
     expect(res.statusCode).toBe(200);
@@ -200,7 +200,7 @@ describe('👥 FRIENDSHIPS API', () => {
     const res = await fastify.inject({
       method: 'PUT',
       url: `/friendships/${rejectId}/reject`,
-      headers: { authorization: `Bearer ${token3}` }
+      headers: { authorization: `Bearer ${token3}` },
     });
 
     expect(res.statusCode).toBe(200);
@@ -215,7 +215,7 @@ describe('👥 FRIENDSHIPS API', () => {
     const res = await fastify.inject({
       method: 'PUT',
       url: `/friendships/${friendshipId}/block`,
-      headers: { authorization: `Bearer ${token1}` }
+      headers: { authorization: `Bearer ${token1}` },
     });
 
     expect(res.statusCode).toBe(200);
@@ -233,7 +233,7 @@ describe('👥 FRIENDSHIPS API', () => {
       method: 'POST',
       url: '/friendships/request',
       headers: { authorization: `Bearer ${token2}` },
-      payload: { userId2: userId3 }
+      payload: { userId2: userId3 },
     });
 
     const all = await pool.query(
@@ -246,7 +246,7 @@ describe('👥 FRIENDSHIPS API', () => {
     const res = await fastify.inject({
       method: 'DELETE',
       url: `/friendships/${deleteId}`,
-      headers: { authorization: `Bearer ${token2}` }
+      headers: { authorization: `Bearer ${token2}` },
     });
 
     expect(res.statusCode).toBe(200);
@@ -260,7 +260,7 @@ describe('👥 FRIENDSHIPS API', () => {
   it('should reject unauthenticated requests', async () => {
     const res = await fastify.inject({
       method: 'GET',
-      url: '/friendships'
+      url: '/friendships',
     });
 
     expect(res.statusCode).toBe(401);
@@ -270,7 +270,7 @@ describe('👥 FRIENDSHIPS API', () => {
     const res = await fastify.inject({
       method: 'DELETE',
       url: `/friendships/${friendshipId}`,
-      headers: { authorization: `Bearer ${token3}` }
+      headers: { authorization: `Bearer ${token3}` },
     });
 
     expect(res.statusCode).toBe(403);

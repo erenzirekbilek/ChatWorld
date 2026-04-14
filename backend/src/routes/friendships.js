@@ -5,7 +5,7 @@ const {
   ValidationError,
   AuthorizationError,
   NotFoundError,
-  InternalError
+  InternalError,
 } = require('../utils/errors');
 
 // UUID validation regex
@@ -22,7 +22,6 @@ const validateUUID = (value, fieldName = 'ID') => {
 };
 
 module.exports = async (fastify) => {
-  
   // ⚠️ ÖNEMLI: Static routes ÖNCE, dynamic routes SONRA!
   // /request ve /pending routes'ları ÖNCE tanımla
 
@@ -35,52 +34,52 @@ module.exports = async (fastify) => {
     {
       onRequest: [fastify.authenticate],
       schema: {
-        tags: ["Friendships"],
-        description: "Send a friend request to another user",
+        tags: ['Friendships'],
+        description: 'Send a friend request to another user',
         security: [{ Bearer: [] }],
         body: {
-          type: "object",
-          required: ["userId2"],
+          type: 'object',
+          required: ['userId2'],
           properties: {
-            userId2: { type: "string", description: "User ID to send friend request to" }
-          }
+            userId2: { type: 'string', description: 'User ID to send friend request to' },
+          },
         },
         response: {
           201: {
-            description: "Friend request sent",
-            type: "object",
+            description: 'Friend request sent',
+            type: 'object',
             properties: {
-              success: { type: "boolean" },
-              message: { type: "string" },
-              friendship: { type: "object" }
-            }
+              success: { type: 'boolean' },
+              message: { type: 'string' },
+              friendship: { type: 'object' },
+            },
           },
           400: {
-            description: "Bad request",
-            type: "object",
+            description: 'Bad request',
+            type: 'object',
             properties: {
-              success: { type: "boolean" },
-              error: { type: "string" }
-            }
+              success: { type: 'boolean' },
+              error: { type: 'string' },
+            },
           },
           401: {
-            description: "Unauthorized - Invalid or missing token",
-            type: "object",
+            description: 'Unauthorized - Invalid or missing token',
+            type: 'object',
             properties: {
-              success: { type: "boolean" },
-              error: { type: "string" }
-            }
+              success: { type: 'boolean' },
+              error: { type: 'string' },
+            },
           },
           404: {
-            description: "User not found",
-            type: "object",
+            description: 'User not found',
+            type: 'object',
             properties: {
-              success: { type: "boolean" },
-              error: { type: "string" }
-            }
-          }
-        }
-      }
+              success: { type: 'boolean' },
+              error: { type: 'string' },
+            },
+          },
+        },
+      },
     },
     async (req, reply) => {
       const userId1 = req.user.id;
@@ -88,27 +87,18 @@ module.exports = async (fastify) => {
 
       // Validation
       if (!userId2) {
-        throw new ValidationError(
-          'userId2 is required',
-          'MISSING_USER_ID'
-        );
+        throw new ValidationError('userId2 is required', 'MISSING_USER_ID');
       }
 
       validateUUID(userId2, 'userId');
 
       if (userId1 === userId2) {
-        throw new ValidationError(
-          'Cannot send friend request to yourself',
-          'SELF_REQUEST'
-        );
+        throw new ValidationError('Cannot send friend request to yourself', 'SELF_REQUEST');
       }
 
       try {
         // Check if recipient exists
-        const userCheck = await pool.query(
-          'SELECT id FROM users WHERE id = $1',
-          [userId2]
-        );
+        const userCheck = await pool.query('SELECT id FROM users WHERE id = $1', [userId2]);
 
         if (userCheck.rows.length === 0) {
           throw new NotFoundError('User');
@@ -131,7 +121,7 @@ module.exports = async (fastify) => {
         return reply.status(201).send({
           success: true,
           message: 'Friend request sent',
-          friendship: result.rows[0]
+          friendship: result.rows[0],
         });
       } catch (err) {
         if (err instanceof ValidationError || err instanceof NotFoundError) {
@@ -151,29 +141,29 @@ module.exports = async (fastify) => {
     {
       onRequest: [fastify.authenticate],
       schema: {
-        tags: ["Friendships"],
-        description: "Get pending friend requests",
+        tags: ['Friendships'],
+        description: 'Get pending friend requests',
         security: [{ Bearer: [] }],
         response: {
           200: {
-            description: "Pending requests retrieved",
-            type: "object",
+            description: 'Pending requests retrieved',
+            type: 'object',
             properties: {
-              success: { type: "boolean" },
-              pending_requests: { type: "array" },
-              count: { type: "integer" }
-            }
+              success: { type: 'boolean' },
+              pending_requests: { type: 'array' },
+              count: { type: 'integer' },
+            },
           },
           401: {
-            description: "Unauthorized - Invalid or missing token",
-            type: "object",
+            description: 'Unauthorized - Invalid or missing token',
+            type: 'object',
             properties: {
-              success: { type: "boolean" },
-              error: { type: "string" }
-            }
-          }
-        }
-      }
+              success: { type: 'boolean' },
+              error: { type: 'string' },
+            },
+          },
+        },
+      },
     },
     async (req, reply) => {
       const userId = req.user.id;
@@ -214,9 +204,9 @@ module.exports = async (fastify) => {
         return reply.status(200).send({
           success: true,
           pending_requests: result.rows,
-          count: result.rows.length
+          count: result.rows.length,
         });
-      } catch (err) {
+      } catch (_err) {
         throw new InternalError('Failed to fetch pending requests');
       }
     }
@@ -231,29 +221,29 @@ module.exports = async (fastify) => {
     {
       onRequest: [fastify.authenticate],
       schema: {
-        tags: ["Friendships"],
-        description: "Get all accepted friends",
+        tags: ['Friendships'],
+        description: 'Get all accepted friends',
         security: [{ Bearer: [] }],
         response: {
           200: {
-            description: "Friends list retrieved",
-            type: "object",
+            description: 'Friends list retrieved',
+            type: 'object',
             properties: {
-              success: { type: "boolean" },
-              friends: { type: "array" },
-              count: { type: "integer" }
-            }
+              success: { type: 'boolean' },
+              friends: { type: 'array' },
+              count: { type: 'integer' },
+            },
           },
           401: {
-            description: "Unauthorized - Invalid or missing token",
-            type: "object",
+            description: 'Unauthorized - Invalid or missing token',
+            type: 'object',
             properties: {
-              success: { type: "boolean" },
-              error: { type: "string" }
-            }
-          }
-        }
-      }
+              success: { type: 'boolean' },
+              error: { type: 'string' },
+            },
+          },
+        },
+      },
     },
     async (req, reply) => {
       const userId = req.user.id;
@@ -285,9 +275,9 @@ module.exports = async (fastify) => {
         return reply.status(200).send({
           success: true,
           friends: result.rows,
-          count: result.rows.length
+          count: result.rows.length,
         });
-      } catch (err) {
+      } catch (_err) {
         throw new InternalError('Failed to fetch friends');
       }
     }
@@ -302,52 +292,52 @@ module.exports = async (fastify) => {
     {
       onRequest: [fastify.authenticate],
       schema: {
-        tags: ["Friendships"],
-        description: "Accept a friend request",
+        tags: ['Friendships'],
+        description: 'Accept a friend request',
         security: [{ Bearer: [] }],
         params: {
-          type: "object",
-          required: ["id"],
+          type: 'object',
+          required: ['id'],
           properties: {
-            id: { type: "string", description: "Friendship ID" }
-          }
+            id: { type: 'string', description: 'Friendship ID' },
+          },
         },
         response: {
           200: {
-            description: "Friend request accepted",
-            type: "object",
+            description: 'Friend request accepted',
+            type: 'object',
             properties: {
-              success: { type: "boolean" },
-              message: { type: "string" },
-              friendship: { type: "object" }
-            }
+              success: { type: 'boolean' },
+              message: { type: 'string' },
+              friendship: { type: 'object' },
+            },
           },
           400: {
-            description: "Bad request",
-            type: "object",
+            description: 'Bad request',
+            type: 'object',
             properties: {
-              success: { type: "boolean" },
-              error: { type: "string" }
-            }
+              success: { type: 'boolean' },
+              error: { type: 'string' },
+            },
           },
           401: {
-            description: "Unauthorized - Invalid or missing token",
-            type: "object",
+            description: 'Unauthorized - Invalid or missing token',
+            type: 'object',
             properties: {
-              success: { type: "boolean" },
-              error: { type: "string" }
-            }
+              success: { type: 'boolean' },
+              error: { type: 'string' },
+            },
           },
           403: {
-            description: "Forbidden",
-            type: "object",
+            description: 'Forbidden',
+            type: 'object',
             properties: {
-              success: { type: "boolean" },
-              error: { type: "string" }
-            }
-          }
-        }
-      }
+              success: { type: 'boolean' },
+              error: { type: 'string' },
+            },
+          },
+        },
+      },
     },
     async (req, reply) => {
       const { id } = req.params;
@@ -370,10 +360,7 @@ module.exports = async (fastify) => {
 
         // Check if user is part of this friendship
         if (userId !== user_id_1 && userId !== user_id_2) {
-          throw new AuthorizationError(
-            'Cannot accept this friend request',
-            'ACCESS_DENIED'
-          );
+          throw new AuthorizationError('Cannot accept this friend request', 'ACCESS_DENIED');
         }
 
         // Can only accept pending requests
@@ -396,10 +383,14 @@ module.exports = async (fastify) => {
         return reply.status(200).send({
           success: true,
           message: 'Friend request accepted',
-          friendship: result.rows[0]
+          friendship: result.rows[0],
         });
       } catch (err) {
-        if (err instanceof ValidationError || err instanceof AuthorizationError || err instanceof NotFoundError) {
+        if (
+          err instanceof ValidationError ||
+          err instanceof AuthorizationError ||
+          err instanceof NotFoundError
+        ) {
           throw err;
         }
         throw new InternalError('Failed to accept friend request');
@@ -416,43 +407,43 @@ module.exports = async (fastify) => {
     {
       onRequest: [fastify.authenticate],
       schema: {
-        tags: ["Friendships"],
-        description: "Reject a friend request",
+        tags: ['Friendships'],
+        description: 'Reject a friend request',
         security: [{ Bearer: [] }],
         params: {
-          type: "object",
-          required: ["id"],
+          type: 'object',
+          required: ['id'],
           properties: {
-            id: { type: "string", description: "Friendship ID" }
-          }
+            id: { type: 'string', description: 'Friendship ID' },
+          },
         },
         response: {
           200: {
-            description: "Friend request rejected",
-            type: "object",
+            description: 'Friend request rejected',
+            type: 'object',
             properties: {
-              success: { type: "boolean" },
-              message: { type: "string" }
-            }
+              success: { type: 'boolean' },
+              message: { type: 'string' },
+            },
           },
           401: {
-            description: "Unauthorized - Invalid or missing token",
-            type: "object",
+            description: 'Unauthorized - Invalid or missing token',
+            type: 'object',
             properties: {
-              success: { type: "boolean" },
-              error: { type: "string" }
-            }
+              success: { type: 'boolean' },
+              error: { type: 'string' },
+            },
           },
           403: {
-            description: "Forbidden",
-            type: "object",
+            description: 'Forbidden',
+            type: 'object',
             properties: {
-              success: { type: "boolean" },
-              error: { type: "string" }
-            }
-          }
-        }
-      }
+              success: { type: 'boolean' },
+              error: { type: 'string' },
+            },
+          },
+        },
+      },
     },
     async (req, reply) => {
       const { id } = req.params;
@@ -473,10 +464,7 @@ module.exports = async (fastify) => {
         const { user_id_1, user_id_2, status } = friendCheck.rows[0];
 
         if (userId !== user_id_1 && userId !== user_id_2) {
-          throw new AuthorizationError(
-            'Cannot reject this friend request',
-            'ACCESS_DENIED'
-          );
+          throw new AuthorizationError('Cannot reject this friend request', 'ACCESS_DENIED');
         }
 
         if (status !== 'pending') {
@@ -491,10 +479,14 @@ module.exports = async (fastify) => {
 
         return reply.status(200).send({
           success: true,
-          message: 'Friend request rejected'
+          message: 'Friend request rejected',
         });
       } catch (err) {
-        if (err instanceof ValidationError || err instanceof AuthorizationError || err instanceof NotFoundError) {
+        if (
+          err instanceof ValidationError ||
+          err instanceof AuthorizationError ||
+          err instanceof NotFoundError
+        ) {
           throw err;
         }
         throw new InternalError('Failed to reject friend request');
@@ -511,43 +503,43 @@ module.exports = async (fastify) => {
     {
       onRequest: [fastify.authenticate],
       schema: {
-        tags: ["Friendships"],
-        description: "Delete/unfriend a user",
+        tags: ['Friendships'],
+        description: 'Delete/unfriend a user',
         security: [{ Bearer: [] }],
         params: {
-          type: "object",
-          required: ["id"],
+          type: 'object',
+          required: ['id'],
           properties: {
-            id: { type: "string", description: "Friendship ID" }
-          }
+            id: { type: 'string', description: 'Friendship ID' },
+          },
         },
         response: {
           200: {
-            description: "Friendship removed",
-            type: "object",
+            description: 'Friendship removed',
+            type: 'object',
             properties: {
-              success: { type: "boolean" },
-              message: { type: "string" }
-            }
+              success: { type: 'boolean' },
+              message: { type: 'string' },
+            },
           },
           401: {
-            description: "Unauthorized - Invalid or missing token",
-            type: "object",
+            description: 'Unauthorized - Invalid or missing token',
+            type: 'object',
             properties: {
-              success: { type: "boolean" },
-              error: { type: "string" }
-            }
+              success: { type: 'boolean' },
+              error: { type: 'string' },
+            },
           },
           403: {
-            description: "Forbidden",
-            type: "object",
+            description: 'Forbidden',
+            type: 'object',
             properties: {
-              success: { type: "boolean" },
-              error: { type: "string" }
-            }
-          }
-        }
-      }
+              success: { type: 'boolean' },
+              error: { type: 'string' },
+            },
+          },
+        },
+      },
     },
     async (req, reply) => {
       const { id } = req.params;
@@ -568,10 +560,7 @@ module.exports = async (fastify) => {
         const { user_id_1, user_id_2 } = friendCheck.rows[0];
 
         if (userId !== user_id_1 && userId !== user_id_2) {
-          throw new AuthorizationError(
-            'Cannot delete this friendship',
-            'ACCESS_DENIED'
-          );
+          throw new AuthorizationError('Cannot delete this friendship', 'ACCESS_DENIED');
         }
 
         // Delete friendship
@@ -579,10 +568,14 @@ module.exports = async (fastify) => {
 
         return reply.status(200).send({
           success: true,
-          message: 'Friendship removed'
+          message: 'Friendship removed',
         });
       } catch (err) {
-        if (err instanceof ValidationError || err instanceof AuthorizationError || err instanceof NotFoundError) {
+        if (
+          err instanceof ValidationError ||
+          err instanceof AuthorizationError ||
+          err instanceof NotFoundError
+        ) {
           throw err;
         }
         throw new InternalError('Failed to delete friendship');
@@ -599,44 +592,44 @@ module.exports = async (fastify) => {
     {
       onRequest: [fastify.authenticate],
       schema: {
-        tags: ["Friendships"],
-        description: "Block a user",
+        tags: ['Friendships'],
+        description: 'Block a user',
         security: [{ Bearer: [] }],
         params: {
-          type: "object",
-          required: ["id"],
+          type: 'object',
+          required: ['id'],
           properties: {
-            id: { type: "string", description: "Friendship ID" }
-          }
+            id: { type: 'string', description: 'Friendship ID' },
+          },
         },
         response: {
           200: {
-            description: "User blocked",
-            type: "object",
+            description: 'User blocked',
+            type: 'object',
             properties: {
-              success: { type: "boolean" },
-              message: { type: "string" },
-              friendship: { type: "object" }
-            }
+              success: { type: 'boolean' },
+              message: { type: 'string' },
+              friendship: { type: 'object' },
+            },
           },
           401: {
-            description: "Unauthorized - Invalid or missing token",
-            type: "object",
+            description: 'Unauthorized - Invalid or missing token',
+            type: 'object',
             properties: {
-              success: { type: "boolean" },
-              error: { type: "string" }
-            }
+              success: { type: 'boolean' },
+              error: { type: 'string' },
+            },
           },
           403: {
-            description: "Forbidden",
-            type: "object",
+            description: 'Forbidden',
+            type: 'object',
             properties: {
-              success: { type: "boolean" },
-              error: { type: "string" }
-            }
-          }
-        }
-      }
+              success: { type: 'boolean' },
+              error: { type: 'string' },
+            },
+          },
+        },
+      },
     },
     async (req, reply) => {
       const { id } = req.params;
@@ -657,10 +650,7 @@ module.exports = async (fastify) => {
         const { user_id_1, user_id_2 } = friendCheck.rows[0];
 
         if (userId !== user_id_1 && userId !== user_id_2) {
-          throw new AuthorizationError(
-            'Cannot block this friendship',
-            'ACCESS_DENIED'
-          );
+          throw new AuthorizationError('Cannot block this friendship', 'ACCESS_DENIED');
         }
 
         // Update status to blocked
@@ -675,10 +665,14 @@ module.exports = async (fastify) => {
         return reply.status(200).send({
           success: true,
           message: 'User blocked',
-          friendship: result.rows[0]
+          friendship: result.rows[0],
         });
       } catch (err) {
-        if (err instanceof ValidationError || err instanceof AuthorizationError || err instanceof NotFoundError) {
+        if (
+          err instanceof ValidationError ||
+          err instanceof AuthorizationError ||
+          err instanceof NotFoundError
+        ) {
           throw err;
         }
         throw new InternalError('Failed to block user');
